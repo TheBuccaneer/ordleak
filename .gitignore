@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+target/
+*.o
+*.a
+*.so
+*.dSYM/
+out/
+logs/
+*.log
+.DS_Store
