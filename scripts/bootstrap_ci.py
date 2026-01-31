@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
+"""
+Bootstrap CI for ordleak experiments.
+Supports flexible label matching via exact match or prefix.
+"""
 import csv
 import random
 import statistics as st
 import argparse
+
 
 def auc_mann_whitney(xs, ys):
     """
@@ -31,6 +36,7 @@ def auc_mann_whitney(xs, ys):
     U = Rpos - n1 * (n1 + 1) / 2.0
     return U / (n0 * n1)
 
+
 def best_balanced_acc(xs, ys):
     """
     Best balanced accuracy over thresholds (predict positive if x >= thr).
@@ -57,17 +63,40 @@ def best_balanced_acc(xs, ys):
             best = bal
     return best
 
+
 def ci(vals, alpha=0.05):
     vals = sorted(vals)
     lo = vals[int((alpha / 2) * len(vals))]
     hi = vals[int((1 - alpha / 2) * len(vals))]
     return st.mean(vals), lo, hi
 
+
+def classify_label(lab: str, pos_label: str, neg_label: str, 
+                   pos_prefix: str | None, neg_prefix: str | None) -> int | None:
+    """
+    Classify a label as positive (1), negative (0), or skip (None).
+    Prefix matching takes precedence over exact match.
+    """
+    # Prefix matching first
+    if pos_prefix and lab.startswith(pos_prefix):
+        return 1
+    if neg_prefix and lab.startswith(neg_prefix):
+        return 0
+    # Exact match fallback
+    if lab == pos_label:
+        return 1
+    if lab == neg_label:
+        return 0
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("csv_path", help="CSV with columns incl. label + ods")
-    ap.add_argument("--pos-label", default="ATTACK", help="positive class label")
-    ap.add_argument("--neg-label", default="BASELINE", help="negative class label")
+    ap.add_argument("--pos-label", default="ATTACK", help="positive class label (default: ATTACK)")
+    ap.add_argument("--neg-label", default="BASELINE", help="negative class label (default: BASELINE)")
+    ap.add_argument("--pos-prefix", default=None, help="positive class prefix (e.g., CPU_)")
+    ap.add_argument("--neg-prefix", default=None, help="negative class prefix (e.g., MEM_)")
     ap.add_argument("--label-col", default="label", help="label column name")
     ap.add_argument("--metric-col", default="ods", help="metric column name (e.g., ods)")
     ap.add_argument("--B", type=int, default=5000, help="bootstrap resamples")
@@ -90,14 +119,17 @@ def main():
 
     X = []
     y = []
+    seen_labels = set()
+    
     for r in rows:
         lab = (r.get(args.label_col) or "").strip()
-        if lab == args.pos_label:
-            t = 1
-        elif lab == args.neg_label:
-            t = 0
-        else:
+        seen_labels.add(lab)
+        
+        t = classify_label(lab, args.pos_label, args.neg_label, 
+                          args.pos_prefix, args.neg_prefix)
+        if t is None:
             continue
+            
         try:
             v = float(r[metric_col])
         except Exception:
@@ -108,10 +140,17 @@ def main():
     n = len(X)
     n_pos = sum(y)
     n_neg = n - n_pos
+    
+    # Determine display names
+    pos_name = args.pos_prefix.rstrip("_") if args.pos_prefix else args.pos_label
+    neg_name = args.neg_prefix.rstrip("_") if args.neg_prefix else args.neg_label
+    
     print(f"Bootstrap (B={args.B}) on {args.csv_path}")
-    print(f"N total={n}  {args.neg_label}={n_neg}  {args.pos_label}={n_pos}")
+    print(f"N total={n}  {neg_name}={n_neg}  {pos_name}={n_pos}")
+    
     if n_pos == 0 or n_neg == 0:
-        raise SystemExit("need both classes")
+        print(f"\nLabels found in CSV: {sorted(seen_labels)}")
+        raise SystemExit(f"ERROR: need both classes. Got {neg_name}={n_neg}, {pos_name}={n_pos}")
 
     random.seed(args.seed)
     aucs = []
@@ -128,6 +167,7 @@ def main():
     m_bal, lo_bal, hi_bal = ci(bals)
     print(f"AUC mean={m_auc:.3f}  95% CI [{lo_auc:.3f}, {hi_auc:.3f}]")
     print(f"BalancedAcc mean={m_bal:.3f}  95% CI [{lo_bal:.3f}, {hi_bal:.3f}]")
+
 
 if __name__ == "__main__":
     main()
