@@ -1,0 +1,174 @@
+Alles klar — hier ist eine **Config-Übersicht für 5 Runs + 1 Negativrun**, in genau deiner gewünschten Reihenfolge (**Victim → Baseline → Attack**). Die **Winning Config** (`dataset.csv`) ist 1:1 aus `README_UPDATED.md`.
+
+> Annahme: du führst alles aus dem Repo-Root `~/projects/ordleak` aus, und pinst wie gehabt auf `0,1`. (Auf Intel/Laptop ggf. Cores anpassen.)
+
+---
+
+## Run 1 — **WINNING / Standard (wie `dataset.csv`)**
+
+**Victim**
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Baseline**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/run1_dataset.csv
+```
+
+**Attack**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 3 --label ATTACK --out out/csv/run1_dataset.csv
+```
+
+(entspricht eurer “winning config” aus der README)
+
+---
+
+## Run 2 — **STRONG (mehr Contention)**
+
+Ziel: Signal maximal machen (gut für Threadripper + oft auch Intel).
+**Victim** (gleich wie Run 1)
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Baseline**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/run2_strong.csv
+```
+
+**Attack**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 32 --attack-seconds 5 --label ATTACK --out out/csv/run2_strong.csv
+```
+
+---
+
+## Run 3 — **MID (kürzerer/leichterer Attacker)**
+
+Ziel: “regime dependence” sichtbar machen.
+**Victim**
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Baseline**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/run3_mid.csv
+```
+
+**Attack**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 8 --attack-seconds 2 --label ATTACK --out out/csv/run3_mid.csv
+```
+
+---
+
+## Run 4 — **WEAK / likely-no-signal**
+
+Ziel: bewusst ein Setup, das oft kollabiert (wie eure “config_b/c”-Kategorie).
+**Victim**
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Baseline**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/run4_weak.csv
+```
+
+**Attack**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 4 --attack-seconds 1 --label ATTACK --out out/csv/run4_weak.csv
+```
+
+---
+
+## Run 5 — **BIGGER / rerun-style (mehr Runs, stabilere CI)**
+
+Ziel: wie euer “dataset4”-Gedanke: mehr Samples.
+**Victim**
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Baseline**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 200 --n 20 --label BASELINE --out out/csv/run5_big.csv
+```
+
+**Attack**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 200 --n 20 --attack --attack-procs 16 --attack-seconds 3 --label ATTACK --out out/csv/run5_big.csv
+```
+
+---
+
+## Run 6 — **NEGATIVE CONTROL (off-core attacker)**
+
+Wichtig: `run_dataset.py --attack ...` pinnt den Attacker *mit* dem Runner. Für off-core machen wir den Attacker **separat** und lassen den Dataset-Run ohne `--attack`.
+
+**Victim (co-resident cores 0,1)**
+
+```bash
+cd ~/projects/ordleak
+mkdir -p out
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim.sock --workers 2 --iters 200000
+```
+
+**Attacker separat (DISJOINT cores, Beispiel 2-31)**
+
+```bash
+taskset -c 2-31 python3 -u src/attacker.py --procs 32 --seconds 999999
+```
+
+**Dataset (ohne --attack, trotzdem Label “NEGCTRL_OFFCORE”)**
+
+```bash
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label NEGCTRL_OFFCORE --out out/csv/run6_negctrl_offcore.csv
+```
+
+Danach Attacker-Prozess abbrechen.
+
+---
+
+### Mini-Hinweis zu “kannst du dich an die Eingabedaten erinnern?”
+
+* Für **`dataset.csv`**: ja, steht in der README (siehe Run 1).
+* Für **`config_a/b/c`**: die exakten Parameter sind in euren Artefakt-CSVs nicht mitgespeichert (CSV schema enthält keine attack-procs/seconds/iters), daher: **nicht rekonstruierbar** im Nachhinein.
+
+---
+
+Wenn du willst, ist der nächste Minischritt: **Run 1 auf Threadripper starten** (ein Befehl: Victim).
