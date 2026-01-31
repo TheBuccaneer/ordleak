@@ -6,7 +6,6 @@ target/
 *.a
 *.so
 *.dSYM/
-out/
 logs/
 *.log
 .DS_Store
