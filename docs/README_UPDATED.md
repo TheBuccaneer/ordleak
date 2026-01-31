@@ -64,6 +64,22 @@ python3 scripts/analyze.py out/csv/dataset.csv
 
 ---
 
+## Bootstrap confidence intervals (paper-facing)
+To report uncertainty, compute bootstrap 95% confidence intervals for **AUC** and **balanced accuracy** (default `B=5000`) using `scripts/bootstrap_ci.py`:
+
+```bash
+cd ~/projects/ordleak
+python3 scripts/bootstrap_ci.py out/csv/dataset.csv
+python3 scripts/bootstrap_ci.py out/csv/dataset_ripper.csv
+python3 scripts/bootstrap_ci.py out/csv/negctrl_offcore.csv
+```
+
+Notes:
+- Run from the **repo root** (`~/projects/ordleak`). Otherwise you'll get `can't open file .../scripts/bootstrap_ci.py`.
+- If you want to bootstrap a different column (e.g., `gap_var`), pass `--metric-col gap_var`.
+
+---
+
 ## Components (`src/`)
 
 ### `src/victim.py`
@@ -152,6 +168,15 @@ python3 scripts/analyze.py out/csv/dataset.csv
 ```
 
 ---
+
+
+### `scripts/bootstrap_ci.py`
+Computes **bootstrap** 95% confidence intervals for **AUC** and **balanced accuracy** on a dataset CSV (default: `B=5000`).
+
+Usage:
+```bash
+python3 scripts/bootstrap_ci.py out/csv/dataset.csv
+```
 
 ## Reproducibility notes
 - Use `taskset` to pin both victim and dataset runner (including attacker children) to the same cores:

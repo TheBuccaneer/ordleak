@@ -2,6 +2,8 @@
 
 *Generated:* 2026-01-30
 
+*Updated:* 2026-01-31 (bootstrap CIs + Threadripper replication + negative control + dataset2)
+
 This document collects the **paper-facing numbers** (sample sizes, per-class descriptive statistics, effect sizes, AUC, and threshold accuracies)
 for the datasets that were analyzed with `scripts/analyze.py`, plus bootstrap confidence intervals computed in the chat.
 
@@ -12,6 +14,9 @@ for the datasets that were analyzed with `scripts/analyze.py`, plus bootstrap co
 Across multiple datasets, the **ATTACK vs BASELINE** distinguisher based on **ordinal completion order** is **measurable**.
 The strongest run (`dataset.csv`) reaches **AUC=0.808** with **Cohen’s d=1.223** (balanced 100/100). A larger rerun (`dataset4.csv`, 200/200)
 shows the effect persists with **AUC=0.735** (**95% CI [0.688, 0.780]**), indicating the magnitude varies but remains **clearly above chance**.
+
+**Update (Threadripper replication):** `dataset_ripper.csv` improves separability to **AUC=0.864** (95% CI **[0.813, 0.912]**) with **BalancedAcc=0.812** (95% CI **[0.762, 0.862]**), supporting that the effect is not a single-machine artifact.
+**Negative control:** `negctrl_offcore.csv` is near chance with **AUC=0.528** (95% CI **[0.453, 0.601]**).
 
 ---
 
@@ -54,6 +59,11 @@ shows the effect persists with **AUC=0.735** (**95% CI [0.688, 0.780]**), indica
 - AUC-ROC: **0.453**
 - Best threshold accuracy: **54.0%**
 
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.369**  95% CI **[0.264, 0.481]**
+- BalancedAcc mean=**0.525**  95% CI **[0.500, 0.579]**
+
+
 ---
 
 ### `out/csv/config_b.csv`
@@ -72,6 +82,11 @@ shows the effect persists with **AUC=0.735** (**95% CI [0.688, 0.780]**), indica
 - AUC-ROC: **0.440**
 - Best threshold accuracy: **51.0%**
 
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.414**  95% CI **[0.311, 0.523]**
+- BalancedAcc mean=**0.510**  95% CI **[0.500, 0.560]**
+
+
 ---
 
 ### `out/csv/config_a.csv`
@@ -89,6 +104,11 @@ shows the effect persists with **AUC=0.735** (**95% CI [0.688, 0.780]**), indica
 - Cohen's d: **0.490**
 - AUC-ROC: **0.668**
 - Best threshold accuracy: **67.0%**
+
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.753**  95% CI **[0.657, 0.843]**
+- BalancedAcc mean=**0.713**  95% CI **[0.636, 0.791]**
+
 
 ---
 
@@ -157,6 +177,37 @@ shows the effect persists with **AUC=0.735** (**95% CI [0.688, 0.780]**), indica
 
 **Interpretation:** When the attacker is pinned to **disjoint cores**, the distinguisher collapses to near-chance performance (AUC ≈ 0.53–0.54), supporting that the main effect requires **co-resident contention** and is not a pipeline/label artifact.
 
+
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.528**  95% CI **[0.453, 0.601]**
+- BalancedAcc mean=**0.539**  95% CI **[0.500, 0.594]**
+
+
+### `out/csv/dataset2.csv` (variant run)
+
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.733**  95% CI **[0.664, 0.798]**
+- BalancedAcc mean=**0.691**  95% CI **[0.631, 0.751]**
+
+### `out/csv/dataset_ripper.csv` (Threadripper replication)
+
+**ODS**
+- BASELINE: mean=0.0068 std=0.0053 [min=0.0000, max=0.0316]
+- ATTACK:   mean=0.0176 std=0.0084 [min=0.0000, max=0.0368]
+- Cohen's d: **1.522**
+- AUC-ROC: **0.864**
+- Best threshold accuracy: **81.0%** (thr=0.0158)
+
+**GAP_VAR**
+- BASELINE: mean=0.1076 std=0.1219
+- ATTACK:   mean=0.2380 std=0.1125
+- Cohen's d: **1.111**
+- AUC-ROC: **0.833**
+- Best threshold accuracy: **83.0%**
+
+**Bootstrap confidence intervals (B=5000; `scripts/bootstrap_ci.py`, ODS)**
+- AUC mean=**0.864**  95% CI **[0.813, 0.912]**
+- BalancedAcc mean=**0.812**  95% CI **[0.762, 0.862]**
 
 ## Paper-ready sentence templates
 
