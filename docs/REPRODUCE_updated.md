@@ -23,9 +23,9 @@ It is written so that a future **artifact bundle** can treat the artifact folder
 
 ### Stage 2 — secret leakage (CPU vs MEM)
 
-- `out/csv/stage2/secret_tr_base.csv`
-- `out/csv/stage2/secret_tr_att.csv`
-- `out/csv/stage2/negctrl_stage2.csv`
+- `out/csv/stage2/threadripper/secret_tr_base.csv`
+- `out/csv/stage2/threadripper/secret_tr_att.csv`
+- `out/csv/stage2/threadripper/negctrl_stage2.csv`
 
 ---
 
@@ -140,7 +140,7 @@ cd ~/projects/ordleak
 mkdir -p out/csv/stage2
 ln -sf victim_cpu.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/secret_tr_base.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
 ```
 
 #### Terminal 1 — restart victim (MEM mode)
@@ -156,7 +156,7 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --
 cd ~/projects/ordleak
 ln -sf victim_mem.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/secret_tr_base.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
 ```
 
 ---
@@ -176,7 +176,7 @@ cd ~/projects/ordleak
 mkdir -p out/csv/stage2
 ln -sf victim_cpu.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/secret_tr_att.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
 ```
 
 #### Terminal 1 — restart victim (MEM mode)
@@ -192,7 +192,7 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --
 cd ~/projects/ordleak
 ln -sf victim_mem.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/secret_tr_att.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
 ```
 
 ---
@@ -225,7 +225,7 @@ cd ~/projects/ordleak
 mkdir -p out/csv/stage2
 ln -sf victim_cpu.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_NEGCTRL_OFFCORE   --out out/csv/stage2/negctrl_stage2.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_NEGCTRL_OFFCORE   --out out/csv/stage2/threadripper/negctrl_stage2.csv
 ```
 
 #### Terminal 1 — restart victim (MEM mode)
@@ -241,14 +241,14 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --
 cd ~/projects/ordleak
 ln -sf victim_mem.sock out/victim.sock
 
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_NEGCTRL_OFFCORE   --out out/csv/stage2/negctrl_stage2.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_NEGCTRL_OFFCORE   --out out/csv/stage2/threadripper/negctrl_stage2.csv
 ```
 
 #### (Optional) Analyze + bootstrap CI for Stage 2 negctrl
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
-python3 scripts/bootstrap_ci.py out/csv/stage2/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
+python3 scripts/analyze.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
 
 ## 6) (Optional) Analysis + Bootstrap CI
 
@@ -269,11 +269,11 @@ python3 scripts/bootstrap_ci.py "out/csv/stage1/threadripper/first run_ripper/ru
 Stage 2:
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
-python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
 
-python3 scripts/analyze.py out/csv/stage2/secret_tr_att.csv  --pos-label MEM_ATT  --neg-label CPU_ATT
-python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_att.csv  --pos-label MEM_ATT  --neg-label CPU_ATT
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_att.csv  --pos-label MEM_ATT  --neg-label CPU_ATT
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv  --pos-label MEM_ATT  --neg-label CPU_ATT
 ```
 
 
@@ -333,35 +333,35 @@ mkdir -p out/csv/stage1/intel_i9_7900x/runset1
 ```bash
 cd ~/projects/ordleak
 taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/stage1/intel_i9_7900x/runset1/run1_dataset.csv
-taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs None --attack-seconds None --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run1_dataset.csv
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 5 --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run1_dataset.csv
 ```
 
 **Run 2 (`run2_dataset.csv`)**
 ```bash
 cd ~/projects/ordleak
 taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/stage1/intel_i9_7900x/runset1/run2_dataset.csv
-taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs None --attack-seconds None --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run2_dataset.csv
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 5 --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run2_dataset.csv
 ```
 
 **Run 3 (`run3_dataset.csv`)**
 ```bash
 cd ~/projects/ordleak
 taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/stage1/intel_i9_7900x/runset1/run3_dataset.csv
-taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs None --attack-seconds None --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run3_dataset.csv
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 5 --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run3_dataset.csv
 ```
 
 **Run 4 (`run4_dataset.csv`)**
 ```bash
 cd ~/projects/ordleak
 taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/stage1/intel_i9_7900x/runset1/run4_dataset.csv
-taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs None --attack-seconds None --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run4_dataset.csv
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 5 --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run4_dataset.csv
 ```
 
 **Run 5 (`run5_dataset.csv`)**
 ```bash
 cd ~/projects/ordleak
 taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label BASELINE --out out/csv/stage1/intel_i9_7900x/runset1/run5_dataset.csv
-taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs None --attack-seconds None --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run5_dataset.csv
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 16 --attack-seconds 5 --label ATTACK --out out/csv/stage1/intel_i9_7900x/runset1/run5_dataset.csv
 ```
 
 ---
@@ -417,7 +417,134 @@ python3 scripts/bootstrap_ci.py out/csv/stage1/intel_i9_7900x/runset1/run1_datas
 Negative control:
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv --pos-label BASELINE --neg-label NEGCTRL_OFFCORE
-python3 scripts/bootstrap_ci.py out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv --pos-label BASELINE --neg-label NEGCTRL_OFFCORE
+python3 scripts/analyze.py out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv --pos-label NEGCTRL_OFFCORE --neg-label BASELINE
 python3 scripts/bootstrap_ci.py out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv --pos-label NEGCTRL_OFFCORE --neg-label BASELINE
+```
+
+---
+
+## 6) Stage 2 reproduction (secret-mode leakage on Intel i9-7900X)
+
+This follows the same protocol as the Threadripper Stage 2, but with the Intel output paths:
+
+- `out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv`
+- `out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv`
+- `out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv`
+
+### 6.1 Base (CPU_BASE vs MEM_BASE in the same CSV)
+
+**Terminal 1 — CPU victim**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_cpu.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
+```
+
+**Terminal 2 — symlink + CPU_BASE dataset**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_cpu.sock out/victim.sock
+mkdir -p out/csv/stage2/i9_7900x
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label CPU_BASE --out out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv
+```
+
+Stop victim (Ctrl+C).
+
+**Terminal 1 — MEM victim**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_mem.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
+```
+
+**Terminal 2 — symlink + MEM_BASE dataset (append to same CSV)**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_mem.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label MEM_BASE --out out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv
+```
+
+### 6.2 Attack (CPU_ATT vs MEM_ATT in the same CSV)
+
+**CPU victim + CPU_ATT dataset**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_cpu.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
+```
+
+```bash
+cd ~/projects/ordleak
+ln -sf victim_cpu.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 32 --attack-seconds 5 --label CPU_ATT --out out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv
+```
+
+Stop victim (Ctrl+C).
+
+**MEM victim + MEM_ATT dataset**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_mem.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
+```
+
+```bash
+cd ~/projects/ordleak
+ln -sf victim_mem.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --attack --attack-procs 32 --attack-seconds 5 --label MEM_ATT --out out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv
+```
+
+### 6.3 Stage 2 negative control (off-core attacker)
+
+On the i9-7900X, CPUs `0` and `1` are *different physical cores* (core 0 and core 1). The sibling hyperthreads are `10` and `11`.
+So pinning victim+dataset to `0,1` is a reasonable “two-core” setup, and the off-core set is `2-19`.
+
+**Terminal 3 — off-core attacker**
+```bash
+cd ~/projects/ordleak
+taskset -c 2-19 python3 -u src/attacker.py --procs 20 --seconds 999999
+```
+
+**Terminal 1 — CPU victim**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_cpu.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
+```
+
+**Terminal 2 — symlink + CPU_NEGCTRL_OFFCORE**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_cpu.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label CPU_NEGCTRL_OFFCORE --out out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv
+```
+
+Stop CPU victim (Ctrl+C).
+
+**Terminal 1 — MEM victim**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock out/victim_mem.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
+```
+
+**Terminal 2 — symlink + MEM_NEGCTRL_OFFCORE**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_mem.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py --runs 100 --n 20 --label MEM_NEGCTRL_OFFCORE --out out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv
+```
+
+### 6.4 Analysis commands (Stage 2, Intel)
+
+```bash
+cd ~/projects/ordleak
+python3 scripts/analyze.py out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/bootstrap_ci.py out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+
+python3 scripts/analyze.py out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+python3 scripts/bootstrap_ci.py out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+
+python3 scripts/analyze.py out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
+python3 scripts/bootstrap_ci.py out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
 ```

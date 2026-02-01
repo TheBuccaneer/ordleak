@@ -147,6 +147,33 @@ python3 scripts/bootstrap_ci.py out/csv/stage1/threadripper/first\ run_ripper/ru
 
 ---
 
+---
+## Stage 1 outputs + results (Intel i9-7900X)
+
+Files (your current layout):
+
+- `out/csv/stage1/intel_i9_7900x/runset1/run1_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run2_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run3_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run4_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run5_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv`  (negative control)
+
+### Stage 1 summary table (Intel)
+
+| Dataset file | Samples | ODS AUC (analyze) | GAP AUC (analyze) | Bootstrap AUC mean (ODS) | 95% CI | Bootstrap BalAcc mean | 95% CI |
+|---|---:|---:|---:|---:|---|---:|---|
+| run1_dataset.csv | 200 (100/100) | 0.974 | 0.979 | 0.975 | [0.953, 0.990] | 0.945 | [0.912, 0.975] |
+| run2_dataset.csv | 200 (100/100) | 0.992 | 0.987 | 0.992 | [0.984, 0.998] | 0.970 | [0.945, 0.990] |
+| run3_dataset.csv | 200 (100/100) | 0.967 | 0.964 | 0.967 | [0.946, 0.983] | 0.906 | [0.866, 0.945] |
+| run4_dataset.csv | 200 (100/100) | 0.959 | 0.951 | 0.959 | [0.929, 0.983] | 0.922 | [0.885, 0.957] |
+| run5_dataset.csv | 200 (100/100) | 0.975 | 0.968 | 0.975 | [0.958, 0.988] | 0.920 | [0.881, 0.955] |
+| run6_negctrl_vs_base.csv | 200 (100/100) | 0.544 | 0.581 | 0.544 | [0.472, 0.616] | 0.561 | [0.522, 0.602] |
+
+**Interpretation (Stage 1, Intel):**
+- Attacker presence is **very strongly** distinguishable across `run1–run5` (AUC ≈ **0.959–0.992**).
+- The off-core negative control (`run6_negctrl_vs_base.csv`) drops close to chance (AUC **0.544**, CI includes 0.50), which is consistent with “no shared-core contention ⇒ weak/no signal”.
+
 # Stage 2 — Secret-mode leakage (CPU vs MEM)
 
 **Goal (Stage 2):** introduce an explicit **victim secret** (mode = `cpu` vs `mem`) and measure how much an attacker amplifies **mode distinguishability** from rank-only completion order.
@@ -160,9 +187,9 @@ Stage 2 produces:
 
 | Dataset file | Classes (pos vs neg) | Samples | ODS AUC (analyze) | GAP AUC (analyze) | Bootstrap AUC mean (ODS) | 95% CI | Bootstrap BalAcc mean | 95% CI | Notes |
 |---|---|---:|---:|---:|---:|---|---:|---|---|
-| `out/csv/stage2/secret_tr_base.csv` | `MEM_BASE` vs `CPU_BASE` | 200 (100/100) | 0.476 | 0.466 | 0.476 | [0.400, 0.551] | 0.527 | [0.500, 0.576] | No attacker; near chance |
-| `out/csv/stage2/secret_tr_att.csv` | `MEM_ATT` vs `CPU_ATT` | 200 (100/100) | 0.800 | 0.783 | 0.800 | [0.731, 0.863] | 0.791 | [0.734, 0.845] | Co-resident attacker; strong signal |
-| `out/csv/stage2/negctrl_stage2.csv` | `MEM_NEGCTRL_OFFCORE` vs `CPU_NEGCTRL_OFFCORE` | 200 (100/100) | 0.447 | 0.468 | 0.447 | [0.370, 0.528] | 0.551 | [0.507, 0.596] | Off-core attacker; near chance (no amplification) |
+| `out/csv/stage2/threadripper/secret_tr_base.csv` | `MEM_BASE` vs `CPU_BASE` | 200 (100/100) | 0.476 | 0.466 | 0.476 | [0.400, 0.551] | 0.527 | [0.500, 0.576] | No attacker; near chance |
+| `out/csv/stage2/threadripper/secret_tr_att.csv` | `MEM_ATT` vs `CPU_ATT` | 200 (100/100) | 0.800 | 0.783 | 0.800 | [0.731, 0.863] | 0.791 | [0.734, 0.845] | Co-resident attacker; strong signal |
+| `out/csv/stage2/threadripper/negctrl_stage2.csv` | `MEM_NEGCTRL_OFFCORE` vs `CPU_NEGCTRL_OFFCORE` | 200 (100/100) | 0.447 | 0.468 | 0.447 | [0.370, 0.528] | 0.551 | [0.507, 0.596] | Off-core attacker; near chance (no amplification) |
 
 ## How Stage 2 datasets were generated (Threadripper)
 
@@ -179,7 +206,7 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --
 ```bash
 cd ~/projects/ordleak
 ln -sf victim_cpu.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/secret_tr_base.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
 ```
 
 **Terminal 1 — victim MEM**
@@ -193,15 +220,15 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --
 ```bash
 cd ~/projects/ordleak
 ln -sf victim_mem.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/secret_tr_base.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
 ```
 
 ### Results (latest): `secret_tr_base.csv` (MEM_BASE vs CPU_BASE)
 
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
-python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
 ```
 
 - ODS AUC (analyze): **0.476**
@@ -226,7 +253,7 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --
 ```bash
 cd ~/projects/ordleak
 ln -sf victim_cpu.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/secret_tr_att.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
 ```
 
 **Terminal 1 — victim MEM**
@@ -240,15 +267,15 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --
 ```bash
 cd ~/projects/ordleak
 ln -sf victim_mem.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/secret_tr_att.csv
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
 ```
 
 ### Results: `secret_tr_att.csv` (MEM_ATT vs CPU_ATT)
 
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
-python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
 ```
 
 - ODS AUC (analyze): **0.800**
@@ -265,7 +292,7 @@ python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_att.csv --pos-label MEM
 **Goal:** show that placing the attacker **off-core** removes the *amplification* of CPU vs MEM distinguishability.
 
 ### Dataset
-- File: `out/csv/stage2/negctrl_stage2.csv`
+- File: `out/csv/stage2/threadripper/negctrl_stage2.csv`
 - Classes: `CPU_NEGCTRL_OFFCORE` vs `MEM_NEGCTRL_OFFCORE`
 - Attacker pinned off victim cores (Threadripper example): `2-31`
 - Victim + dataset runner pinned to: `0,1`
@@ -274,8 +301,8 @@ python3 scripts/bootstrap_ci.py out/csv/stage2/secret_tr_att.csv --pos-label MEM
 
 ```bash
 cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
-python3 scripts/bootstrap_ci.py out/csv/stage2/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
+python3 scripts/analyze.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
 ```
 
 ### Results
@@ -304,7 +331,7 @@ Near chance ⇒ off-core attacker does **not** amplify CPU vs MEM mode distingui
    Baseline (no attacker) is near chance, but under co-resident contention we see strong mode distinguishability (AUC ~0.80).
 
 5. **Next missing piece: Stage 2 negative control.**
-   `negctrl_stage2.csv` should demonstrate that placing the attacker off-core removes most of the amplification (expected near chance).
+   `negctrl_stage2.csv` off-core attacker does **not** amplify CPU vs MEM mode distinguishability, consistent with the co-resident contention mechanism.
    
    
 
@@ -421,3 +448,24 @@ python3 scripts/bootstrap_ci.py out/csv/stage1/intel_i9_7900x/runset1/run6_negct
 
 If the attacker is accidentally still running during the “BASELINE” half of `run6_negctrl_vs_base.csv`, the file is not a clean negative control and can show a spurious signal. The commands above explicitly stop the off-core attacker before collecting BASELINE.
 
+---
+## Stage 2 outputs + results (Intel i9-7900X)
+
+Files (your current layout):
+
+- `out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv`  (`CPU_BASE` + `MEM_BASE`)
+- `out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv`   (`CPU_ATT` + `MEM_ATT`)
+- `out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv`       (`CPU_NEGCTRL_OFFCORE` + `MEM_NEGCTRL_OFFCORE`)
+
+### Stage 2 summary table (Intel)
+
+| Dataset file | Labels | Samples | ODS AUC (analyze) | GAP AUC (analyze) | Bootstrap AUC mean (ODS) | 95% CI | Bootstrap BalAcc mean | 95% CI | Notes |
+|---|---|---:|---:|---:|---:|---|---:|---|---|
+| `out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv` | `MEM_BASE` vs `CPU_BASE` | 200 (100/100) | 0.468 | 0.485 | 0.468 | [0.399, 0.538] | 0.517 | [0.500, 0.556] | No attacker; near chance |
+| `out/csv/stage2/i9_7900x/secret_intel_stage2_att.csv` | `MEM_ATT` vs `CPU_ATT` | 200 (100/100) | 0.738 | 0.727 | 0.739 | [0.666, 0.807] | 0.723 | [0.665, 0.779] | Co-resident attacker; amplified signal |
+| `out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv` | `MEM_NEGCTRL_OFFCORE` vs `CPU_NEGCTRL_OFFCORE` | 200 (100/100) | 0.587 | 0.601 | 0.587 | [0.522, 0.651] | 0.590 | [0.525, 0.653] | Off-core attacker; should be near chance |
+
+**Interpretation (Stage 2, Intel):**
+- **Baseline secret leakage** (`CPU_BASE` vs `MEM_BASE`) is **near chance** (AUC **0.468**).
+- With the attacker, **secret leakage becomes clearly measurable** (AUC **0.739**), i.e., attacker presence **amplifies** the CPU-vs-MEM mode difference in rank-only completion order.
+- The stage-2 negative control is **only weak/moderate** (AUC **0.587**) — ideally closer to 0.5; keep this as a “sanity check” result and (if needed) re-run with stricter off-core pinning and/or fewer background processes.
