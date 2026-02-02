@@ -7,7 +7,7 @@ This file documents the **current** results produced in this thread, together wi
 - Machine: **AMD Ryzen Threadripper 3970X (32 cores)**
 - Pinning: Victim + dataset runner pinned to cores `0,1` via `taskset -c 0,1`
 - GUI: **disabled** (headless / `multi-user.target`)
-- Frequency governor: **not forced** (“performance mode” not required for these results)
+- Frequency governor: **not forced** ("performance mode" not required for these results)
 - Threat model: observer sees **rank-only completion order** (`DONE <id>`), no fine-grained timers.
 
 > Note: `scripts/run_dataset.py` **does not store all runtime parameters in the CSV** (it stores: `run_id,label,n,ods,gap_var,first_half_ods`).
@@ -172,7 +172,7 @@ Files (your current layout):
 
 **Interpretation (Stage 1, Intel):**
 - Attacker presence is **very strongly** distinguishable across `run1–run5` (AUC ≈ **0.959–0.992**).
-- The off-core negative control (`run6_negctrl_vs_base.csv`) drops close to chance (AUC **0.544**, CI includes 0.50), which is consistent with “no shared-core contention ⇒ weak/no signal”.
+- The off-core negative control (`run6_negctrl_vs_base.csv`) drops close to chance (AUC **0.544**, CI includes 0.50), which is consistent with "no shared-core contention ⇒ weak/no signal".
 
 # Stage 2 — Secret-mode leakage (CPU vs MEM)
 
@@ -181,7 +181,7 @@ Files (your current layout):
 Stage 2 produces:
 - `secret_tr_base.csv` : CPU_BASE vs MEM_BASE (**no attacker**)
 - `secret_tr_att.csv`  : CPU_ATT vs MEM_ATT (**with co-resident attacker**)
-- `negctrl_stage2.csv` : (planned) CPU_NEGCTRL_OFFCORE vs MEM_NEGCTRL_OFFCORE (**off-core attacker**) — **pending**
+- `negctrl_stage2.csv` : CPU_NEGCTRL_OFFCORE vs MEM_NEGCTRL_OFFCORE (**off-core attacker**)
 
 ## Stage 2 — Summary table (Threadripper)
 
@@ -322,16 +322,16 @@ Near chance ⇒ off-core attacker does **not** amplify CPU vs MEM mode distingui
    Across multiple datasets, BASELINE vs ATTACK is reliably distinguishable from rank-only completion order, with AUC often > 0.95.
 
 2. **Negative control supports the mechanism.**
-   Off-core attacker collapses to near chance (AUC ≈ 0.53 with CI overlapping 0.5), consistent with “co-resident contention required”.
+   Off-core attacker collapses to near chance (AUC ≈ 0.53 with CI overlapping 0.5), consistent with "co-resident contention required".
 
-3. **Stage 2 addresses the “where is the secret?” reviewer point.**
+3. **Stage 2 addresses the "where is the secret?" reviewer point.**
    The secret is the victim mode (`cpu` vs `mem`), not merely attacker presence.
 
 4. **Attacker amplifies secret leakage in Stage 2.**
    Baseline (no attacker) is near chance, but under co-resident contention we see strong mode distinguishability (AUC ~0.80).
 
-5. **Next missing piece: Stage 2 negative control.**
-   `negctrl_stage2.csv` off-core attacker does **not** amplify CPU vs MEM mode distinguishability, consistent with the co-resident contention mechanism.
+5. **Stage 3 shows BOS can eliminate leakage.**
+   With sufficient window size (W ≥ 14), order-based leakage is reduced to random guessing.
    
    
 
@@ -444,9 +444,9 @@ python3 scripts/bootstrap_ci.py out/csv/stage1/intel_i9_7900x/runset1/run6_negct
 
 ---
 
-## Notes / gotcha (why negctrl can look “not chance”)
+## Notes / gotcha (why negctrl can look "not chance")
 
-If the attacker is accidentally still running during the “BASELINE” half of `run6_negctrl_vs_base.csv`, the file is not a clean negative control and can show a spurious signal. The commands above explicitly stop the off-core attacker before collecting BASELINE.
+If the attacker is accidentally still running during the "BASELINE" half of `run6_negctrl_vs_base.csv`, the file is not a clean negative control and can show a spurious signal. The commands above explicitly stop the off-core attacker before collecting BASELINE.
 
 ---
 ## Stage 2 outputs + results (Intel i9-7900X)
@@ -468,4 +468,115 @@ Files (your current layout):
 **Interpretation (Stage 2, Intel):**
 - **Baseline secret leakage** (`CPU_BASE` vs `MEM_BASE`) is **near chance** (AUC **0.468**).
 - With the attacker, **secret leakage becomes clearly measurable** (AUC **0.739**), i.e., attacker presence **amplifies** the CPU-vs-MEM mode difference in rank-only completion order.
-- The stage-2 negative control is **only weak/moderate** (AUC **0.587**) — ideally closer to 0.5; keep this as a “sanity check” result and (if needed) re-run with stricter off-core pinning and/or fewer background processes.
+- The stage-2 negative control is **only weak/moderate** (AUC **0.587**) — ideally closer to 0.5; keep this as a "sanity check" result and (if needed) re-run with stricter off-core pinning and/or fewer background processes.
+
+---
+
+# Stage 3 — Defense: BOS Scrubber Results (Threadripper)
+
+**Goal:** Measure the **leakage–overhead tradeoff** of Budgeted Order Scrubbing (BOS v1).
+
+## Defense mechanism
+
+BOS v1 buffers completion IDs in a window of size `W` and flushes them in a **keyed pseudorandom permutation** using a seeded PRNG shuffle.
+
+- `W=0`: scrubber off (baseline)
+- `W>=1`: buffer up to W IDs before flushing in permuted order
+
+**Threat model:**
+- Seed is a **server-side secret** (not observable by attacker)
+- Window size `W` may be observable (bursty output)
+- PRNG state is continuous (not reset per flush)
+
+## Defense files
+
+```
+out/csv/stage3/
+├── stage2_att_W0_r100.csv
+├── stage2_att_W4_r100.csv
+├── stage2_att_W8_r100.csv
+├── stage2_att_W12_r100.csv
+├── stage2_att_W14_r100.csv
+└── stage2_att_W16_r100.csv
+```
+
+## Experimental setup (Stage 3)
+
+- **Scenario:** Stage 2 ATT (CPU_ATT vs MEM_ATT) with BOS scrubber enabled
+- **Samples:** 100 runs per class (200 total per W value)
+- **Pinning:** `taskset -c 0,1` for victim + dataset runner
+- **Attack:** `--attack-procs 16 --attack-seconds 5`
+- **Victim params:** `--workers 2 --iters 200000 --mem-kb 8192` (for MEM mode)
+- **Scrubber:** `--scrub-window W --scrub-seed 42`
+
+---
+
+## AUC vs W (Stage 2 ATT: `MEM_ATT` vs `CPU_ATT`)
+
+| W | Samples | ODS AUC | ODS 95% CI | GAP_VAR AUC | Interpretation |
+|---:|---:|---:|---|---:|---|
+| 0 (baseline) | 200 (100/100) | **0.821** | [0.759, 0.878] | 0.835 | Strong leakage (baseline) |
+| 4 | 200 (100/100) | **0.750** | — | 0.724 | Leakage reduced, but still present |
+| 8 | 200 (100/100) | **0.773** | [0.700, 0.845] | 0.789 | Non-monotonic: higher than W=4 |
+| 12 | 200 (100/100) | **0.677** | [0.601, 0.749] | 0.514 | ODS "weak", GAP_VAR ≈ random |
+| 14 | 200 (100/100) | **0.501** | [0.420, 0.580] | 0.597 | ODS ≈ random, GAP_VAR slight signal |
+| 16 | 200 (100/100) | **0.449** | [0.369, 0.530] | 0.461 | Both ≈ random (leakage eliminated) |
+
+---
+
+## Key findings
+
+### 1) Baseline leakage is real and stable
+At W=0, the secret (CPU vs MEM) is strongly distinguishable:
+- ODS AUC **0.821**
+- GAP_VAR AUC **0.835**
+
+With tight CIs → this is not noise.
+
+### 2) BOS is tunable – but not monotonic
+Leakage generally decreases with larger W, but **not strictly monotonically**:
+- W=4 reduces leakage (ODS 0.75)
+- W=8 **increases again** (ODS 0.773, GAP_VAR 0.789)
+
+**Design insight:** Certain window sizes can create new patterns (chunk/flush effects) that are again classifiable.
+
+### 3) Transition zone and threshold
+- **W=12:** ODS only "weak" (0.677), GAP_VAR ≈ random (0.514)
+- **W=14:** ODS is effectively neutralized (0.501, CI spans 0.5)
+- **W=16:** Both metrics clearly random (ODS 0.449, GAP_VAR 0.461)
+
+**Takeaway:** In this threat model, the "safe" zone for order-based leakage is approximately **W ≥ 14**.
+
+### 4) Feature perspective (ODS vs GAP_VAR)
+- **ODS** (order-based) is effectively neutralized at W ≈ 14
+- **GAP_VAR** shows residual signal at W=14 (0.597), but becomes random at W=16 (0.461)
+
+This can be framed as: "secondary signal sometimes persists at intermediate W".
+
+---
+
+## Reviewer-ready summary
+
+| Claim | Evidence |
+|-------|----------|
+| Leakage is significant without defense | W=0: AUC ≈ 0.82–0.84 |
+| BOS can eliminate leakage | W=16: AUC ≈ 0.45–0.46 (random) |
+| Non-monotonic behavior exists | W=8 leaks more than W=4 |
+| Practical recommendation | Choose **W ≥ 14** to suppress order-based leakage |
+
+---
+
+## Overhead vs W
+
+> **TODO:** Measure wall-clock runtime for each W value using `/usr/bin/time -p`.
+
+| W | Total runtime (100 runs) | Relative overhead |
+|---:|---:|---:|
+| 0 (baseline) | — | 1.00x |
+| 4 | — | — |
+| 8 | — | — |
+| 12 | — | — |
+| 14 | — | — |
+| 16 | — | — |
+
+Expected: overhead is minimal (scrubber is O(W) memory, O(W) per flush).
