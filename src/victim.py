@@ -9,6 +9,8 @@ in real completion order (rank-only observable).
 Modes:
   - cpu: compute-heavy loop
   - mem: deterministic cache-unfriendly memory access loop (stride=4096)
+  - pbkdf2: PBKDF2-SHA256 (CPU-bound KDF)
+  - scrypt: scrypt (memory-hard KDF)
 
 Defense (BOS v1):
   - --scrub-window W: buffer W completions before flushing in keyed-permuted order
@@ -18,6 +20,7 @@ Defense (BOS v1):
   - W>=2: buffer up to W IDs, flush in pseudorandom order
 """
 import argparse
+import hashlib
 import os
 import random
 import socket
@@ -33,23 +36,23 @@ from typing import Iterator, Optional
 class BOSScrubber:
     """
     Budgeted Order Scrubbing (BOS) v1.
-    
+
     Buffers completion IDs and releases them in a keyed pseudorandom order
     to reduce order-based information leakage.
-    
+
     Threat model:
       - Seed is a server-side secret (not observable by attacker)
       - Window size W may be observable (bursty output)
       - For experimental reproducibility, we use a fixed seed
-    
+
     PRNG state is continuous (initialized once, not reset per flush),
     so identical ID sets do not always receive identical permutations.
     """
-    
+
     def __init__(self, window: int, seed: int = 42):
         """
         Initialize the scrubber.
-        
+
         Args:
             window: buffer size W (flush when buffer reaches this size)
             seed: PRNG seed for deterministic shuffle
@@ -58,11 +61,11 @@ class BOSScrubber:
         self.buffer: list[int] = []
         # Continuous PRNG state: initialized once, never reset
         self._rng = random.Random(seed)
-    
+
     def push(self, jid: int) -> None:
         """Add a completed job ID to the buffer."""
         self.buffer.append(jid)
-    
+
     def maybe_flush(self) -> Iterator[int]:
         """
         If buffer is full (len >= window), flush in permuted order.
@@ -70,7 +73,7 @@ class BOSScrubber:
         """
         if len(self.buffer) >= self.window:
             yield from self._flush()
-    
+
     def final_flush(self) -> Iterator[int]:
         """
         Flush any remaining IDs at end-of-run.
@@ -78,7 +81,7 @@ class BOSScrubber:
         """
         if self.buffer:
             yield from self._flush()
-    
+
     def _flush(self) -> Iterator[int]:
         """
         Internal: shuffle buffer using continuous PRNG and yield all IDs.
@@ -117,6 +120,20 @@ def memory_work(iters: int, buf: bytearray) -> int:
     return checksum & 0xFFFFFFFF
 
 
+def kdf_pbkdf2(iters: int = 100000) -> None:
+    """PBKDF2-SHA256 (CPU-bound KDF)."""
+    password = b"dummy_password"
+    salt = b"dummy_salt_12345"
+    hashlib.pbkdf2_hmac("sha256", password, salt, iters)
+
+
+def kdf_scrypt(n: int = 16384, r: int = 8, p: int = 1, dklen: int = 32) -> None:
+    """scrypt (memory-hard KDF)."""
+    password = b"dummy_password"
+    salt = b"dummy_salt_12345"
+    hashlib.scrypt(password, salt=salt, n=n, r=r, p=p, dklen=dklen)
+
+
 def worker(job_q: Queue, done_q: Queue, iters: int, mode: str, mem_size_kb: int) -> None:
     """Worker process: pull jobs, do work, report completion."""
     buf: Optional[bytearray] = bytearray(mem_size_kb * 1024) if mode == "mem" else None
@@ -128,10 +145,13 @@ def worker(job_q: Queue, done_q: Queue, iters: int, mode: str, mem_size_kb: int)
 
         if mode == "cpu":
             cpu_work(iters)
-        else:
-            # mode == "mem"
+        elif mode == "mem":
             assert buf is not None
             memory_work(iters, buf)
+        elif mode == "pbkdf2":
+            kdf_pbkdf2(iters)
+        elif mode == "scrypt":
+            kdf_scrypt()
 
         done_q.put(jid)
 
@@ -145,7 +165,8 @@ def main() -> int:
     ap.add_argument("--sock", default="out/victim.sock", help="unix socket path")
     ap.add_argument("--workers", type=int, default=2, help="number of worker processes (default: 2)")
     ap.add_argument("--iters", type=int, default=200_000, help="work per job (default: 200000)")
-    ap.add_argument("--mode", choices=["cpu", "mem"], default="cpu", help="work type: cpu or mem (default: cpu)")
+    ap.add_argument("--mode", choices=["cpu", "mem", "pbkdf2", "scrypt"], default="cpu",
+                    help="work type: cpu, mem, pbkdf2, or scrypt (default: cpu)")
     ap.add_argument("--mem-kb", type=int, default=256, help="buffer size in KB for mem mode (default: 256)")
     # BOS scrubber flags
     ap.add_argument("--scrub-window", type=int, default=0,

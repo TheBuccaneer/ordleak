@@ -568,15 +568,95 @@ This can be framed as: "secondary signal sometimes persists at intermediate W".
 
 ## Overhead vs W
 
-> **TODO:** Measure wall-clock runtime for each W value using `/usr/bin/time -p`.
+We measured BOS runtime overhead in two configurations:
+- **Option A (with attack):** End-to-end runtime including co-resident attacker (5s contention per run)
+- **Option B (pure):** Runtime without attacker (isolates BOS cost)
 
-| W | Total runtime (100 runs) | Relative overhead |
-|---:|---:|---:|
-| 0 (baseline) | — | 1.00x |
-| 4 | — | — |
-| 8 | — | — |
-| 12 | — | — |
-| 14 | — | — |
-| 16 | — | — |
+Each measurement: 5 repetitions × 100 runs × 20 jobs = 10,000 jobs per (W, mode) combination.
 
-Expected: overhead is minimal (scrubber is O(W) memory, O(W) per flush).
+### Option A: End-to-end under attack
+
+| W | CPU runtime (s) | CPU overhead | MEM runtime (s) | MEM overhead |
+|---:|---:|---:|---:|---:|
+| 0 | 518.67 ± 0.29 | baseline | 518.24 ± 0.22 | baseline |
+| 4 | 518.37 ± 0.22 | −0.06% | 518.42 ± 0.45 | +0.03% |
+| 8 | 518.72 ± 0.23 | +0.01% | 518.51 ± 0.22 | +0.05% |
+| 12 | 518.76 ± 0.11 | +0.02% | 518.36 ± 0.20 | +0.02% |
+| 14 | 518.58 ± 0.30 | −0.02% | 518.31 ± 0.23 | +0.01% |
+| 16 | 518.58 ± 0.24 | −0.02% | 518.25 ± 0.24 | +0.00% |
+
+### Option B: Pure overhead (no attacker)
+
+| W | CPU runtime (s) | CPU overhead | MEM runtime (s) | MEM overhead |
+|---:|---:|---:|---:|---:|
+| 0 | 46.65 ± 0.05 | baseline | 31.51 ± 0.02 | baseline |
+| 4 | 46.65 ± 0.04 | −0.00% | 31.52 ± 0.04 | +0.01% |
+| 8 | 46.62 ± 0.03 | −0.06% | 31.35 ± 0.30 | −0.51% |
+| 12 | 46.64 ± 0.02 | −0.03% | 31.45 ± 0.20 | −0.20% |
+| 14 | 46.66 ± 0.05 | +0.02% | 31.51 ± 0.02 | +0.00% |
+| 16 | 46.66 ± 0.05 | +0.03% | 31.52 ± 0.01 | +0.03% |
+
+### Interpretation
+
+BOS adds **no measurable runtime overhead** (<0.1% in all configurations). Under attack, runtime is dominated by attacker-induced delays; without attacker, buffering and shuffling costs remain in the noise floor. The defense is effectively "free" in our threat model.
+
+
+---
+
+# Case Study: KDF Fingerprinting (PBKDF2 vs. scrypt)
+
+## Goal
+
+Validate that completion-order fingerprinting generalizes from synthetic CPU/MEM workloads to real cryptographic primitives:
+- **PBKDF2-HMAC-SHA256** (CPU-bound KDF, 100k iterations)
+- **scrypt** (memory-hard KDF, N=16384, r=8, p=1)
+
+## Setup
+
+- Victim modes: `--mode pbkdf2` and `--mode scrypt`
+- Samples: 50 runs per class, n=50 jobs per run
+- No attacker (clean channel)
+- Pinning: `taskset -c 0,1`
+
+## Files
+```
+out/csv/study/
+├── kdf_stage2_W0_test.csv
+└── kdf_stage2_W16_test.csv
+```
+
+## Results
+
+### W=0 (no defense)
+
+| Metric | SCRYPT | PBKDF2 | Cohen's d | AUC |
+|--------|--------|--------|-----------|-----|
+| ODS | 0.0089 ± 0.0048 | 0.0287 ± 0.0080 | 2.995 | **0.985** |
+| GAP_VAR | 0.4678 ± 0.3104 | 2.4365 ± 1.2976 | 2.087 | 0.979 |
+
+Bootstrap (B=5000): AUC mean=0.985, 95% CI [0.963, 0.999]
+
+Best threshold accuracy: 94.0%
+
+### W=16 (BOS defense)
+
+| Metric | AUC | Bootstrap 95% CI |
+|--------|-----|------------------|
+| ODS | **0.514** | [0.406, 0.621] |
+
+Bootstrap (B=5000): AUC mean=0.513
+
+**Signal eliminated** — CI includes 0.5.
+
+## Summary Table
+
+| W | ODS AUC | 95% CI | Interpretation |
+|---:|---:|---|---|
+| 0 | **0.985** | [0.963, 0.999] | Strong leakage |
+| 16 | **0.514** | [0.406, 0.621] | No signal (BOS works) |
+
+## Interpretation
+
+PBKDF2 induces higher completion-order disruption than scrypt despite being faster (~17ms vs ~33ms per call). This is explained by **service-time variance**: PBKDF2 (CPU-bound) shows higher variability, causing more job reordering; scrypt (memory-hard) runs more consistently.
+
+With BOS (W=16), AUC drops from 0.985 to 0.514 — confirming that the defense generalizes to real cryptographic workloads.

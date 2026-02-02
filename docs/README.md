@@ -1,6 +1,6 @@
 # ordleak
 
-**ordleak** studies whether **rank-only completion order** in an asynchronous host–service protocol leaks information under **co-resident CPU contention** — and how such leakage can be mitigated.
+**ordleak** studies whether **rank-only completion order** in an asynchronous host–service protocol leaks information under **co-resident CPU contention** – and how such leakage can be mitigated.
 
 The project intentionally assumes a **weak observer**:
 - no timestamps,
@@ -26,7 +26,7 @@ We explicitly **do not** rely on timers, perf counters, or privileged instrument
 
 ```text
 src/
-  victim.py              # service / victim workload (cpu|mem modes)
+  victim.py              # service / victim workload (cpu|mem modes, BOS scrubber)
   client_rank_only.py    # observer client (rank-only)
   attacker.py            # CPU contention generator
 
@@ -38,6 +38,7 @@ scripts/
 out/csv/
   stage1/                # Stage 1 datasets (presence leakage)
   stage2/                # Stage 2 datasets (secret leakage)
+  stage3/                # Stage 3 datasets (defense / BOS scrubber evaluation)
 ```
 
 ---
@@ -74,7 +75,7 @@ out/csv/stage1/threadripper/first run_ripper/
 
 ### Stage 2 — victim secret leakage (CPU vs MEM)
 
-**Question:** Does a victim-internal secret become inferable from rank-only completion order — and is it **amplified** by an attacker?
+**Question:** Does a victim-internal secret become inferable from rank-only completion order – and is it **amplified** by an attacker?
 
 **Secret definition:**
 - `CPU_*`: CPU-bound work
@@ -86,10 +87,36 @@ out/csv/stage1/threadripper/first run_ripper/
 
 Typical outputs:
 ```text
-out/csv/stage2/
+out/csv/stage2/threadripper/
   secret_tr_base.csv
   secret_tr_att.csv
   negctrl_stage2.csv
+```
+
+---
+
+### Stage 3 — defense evaluation (BOS scrubber)
+
+**Question:** Can we mitigate order-based leakage by scrambling the completion order?
+
+**Defense mechanism:** Budgeted Order Scrubbing (BOS v1)
+- Buffer `W` completion IDs before releasing
+- Flush in keyed pseudorandom permutation (seeded PRNG)
+- Seed is server-side secret; `W` may be observable
+
+**Sweep:** Vary `W ∈ {0, 4, 8, 12, 14, 16}` and measure AUC on Stage 2 ATT scenario.
+
+**Key finding:** Leakage decreases with larger `W`, reaching near-chance at `W ≥ 14`.
+
+Typical outputs:
+```text
+out/csv/stage3/
+  stage2_att_W0_r100.csv
+  stage2_att_W4_r100.csv
+  stage2_att_W8_r100.csv
+  stage2_att_W12_r100.csv
+  stage2_att_W14_r100.csv
+  stage2_att_W16_r100.csv
 ```
 
 ---
@@ -116,9 +143,11 @@ Full command inventory: **`Command.md`**.
 
 ## Status
 
-- Stage 1 complete (presence leakage)
-- Stage 2 complete (secret leakage, attacker-amplified)
-- Next (planned): mitigation / scrubber stage
+- ✅ Stage 1 complete (presence leakage)
+- ✅ Stage 2 complete (secret leakage, attacker-amplified)
+- ✅ Stage 3 complete (BOS scrubber defense evaluation)
+
+---
 
 # Intel i9-7900X notes
 
@@ -133,7 +162,7 @@ The Threadripper runs are the **reference layout**. Intel runs follow the same s
 - Example topology seen via `lscpu -e`:
   - Core 0: CPUs `0` and `10` (hyperthread siblings)
   - Core 1: CPUs `1` and `11`
-- For our “two-core victim” setup we pin to `0,1` (two physical cores).
+- For our "two-core victim" setup we pin to `0,1` (two physical cores).
 - For off-core negative controls we pin the attacker away from those: `2-19`.
 
 ## Current Intel datasets
@@ -157,36 +186,30 @@ Stage 1 headline result on Intel: attacker presence is **very strongly** disting
 
 Stage 2 headline result on Intel: baseline leakage is near chance; co-resident attacker amplifies leakage (see `RESULT.md` for full tables + bootstrap CIs).
 
-## Directory tree (expected)
+## Directory tree (current)
+
 
 ```text
 out/csv/
 ├── stage1
-│   ├── intel_i9_7900x
-│   │   └── runset1
-│   │       ├── run1_dataset.csv
-│   │       ├── run2_dataset.csv
-│   │       ├── run3_dataset.csv
-│   │       ├── run4_dataset.csv
-│   │       ├── run5_dataset.csv
-│   │       └── run6_negctrl_vs_base.csv
-│   └── threadripper
-│       └── first run_ripper
-│           ├── run1_dataset.csv
-│           ├── run2_dataset.csv
-│           ├── run3_dataset.csv
-│           ├── run4_dataset.csv
-│           ├── run5_dataset.csv
-│           └── run6_negctrl_vs_base.csv
-└── stage2
-    ├── i9_7900x
-    │   ├── negctrl_intel_stage2.csv
-    │   ├── secret_intel_stage2_att.csv
-    │   └── secret_intel_stage2_base.csv
-    └── threadripper
-        ├── negctrl_stage2.csv
-        ├── secret_tr_att.csv
-        └── secret_tr_base.csv
+│   ├── intel_i9_7900x/runset1/
+│   │   └── run{1-6}*.csv
+│   └── threadripper/first run_ripper/
+│       └── run{1-6}*.csv
+├── stage2
+│   ├── i9_7900x/
+│   │   └── secret_intel_stage2_{base,att}.csv, negctrl_intel_stage2.csv
+│   └── threadripper/
+│       └── secret_tr_{base,att}.csv, negctrl_stage2.csv
+├── stage3
+│   └── stage2_att_W{0,4,8,12,14,16}_r100.csv
+├── study
+│   ├── kdf_stage2_W0_test.csv
+│   └── kdf_stage2_W16_test.csv
+├── time_BOS
+│   └── overhead_pure_summary_*.csv
+└── time_e2e
+    └── overhead_summary_*.csv
 ```
 
 ## Where to look for commands and numbers
@@ -194,3 +217,18 @@ out/csv/
 - Commands / step-by-step reproduction: `REPRODUCE.md`
 - Script inventory + copy/paste examples: `Command.md`
 - Consolidated results tables (AUC + bootstrap CIs): `RESULT.md`
+
+
+### Case Study — KDF Fingerprinting
+
+**Question:** Does the side channel generalize to real cryptographic workloads?
+
+**Workloads:**
+- PBKDF2-HMAC-SHA256 (CPU-bound)
+- scrypt (memory-hard)
+
+**Results:**
+- W=0: AUC 0.985 (94% accuracy) — strong leakage
+- W=16: AUC 0.514 — no signal (BOS works)
+
+Output: `out/csv/study/kdf_stage2_W{0,16}_test.csv`

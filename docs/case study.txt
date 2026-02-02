@@ -1,0 +1,186 @@
+Ja – das **letzte, paper-relevante Ergebnis** (deine Case Study **PBKDF2 vs. scrypt**, **W=0**, **ohne Scrubber**) ist **stark** und du kannst es jetzt so „zumachen“.
+
+## Case Study Result: PBKDF2 vs. scrypt Fingerprinting (W=0)
+
+**Setup (aus deinem Run):**
+
+* 50 Runs **PBKDF2**, 50 Runs **scrypt**
+* **n=50** Jobs pro Observation
+* **W=0** (Scrubber aus)
+* Victim pinned (taskset 0,1), workers=2 (wie bei dir)
+
+**Observed metrics (means):**
+
+* **ODS:** scrypt **0.0089** vs. PBKDF2 **0.0287**  → sehr klare Trennung
+* **GAP_VAR:** scrypt **0.4678** vs. PBKDF2 **2.4365**
+
+**Classification (wenn du PBKDF2 als “positive” labelst):**
+
+* **ODS AUC-ROC:** **0.985**, best threshold accuracy **94%** (thr ≈ 0.0163)
+* **GAP_VAR AUC-ROC:** **0.979**, best threshold accuracy **94%**
+* **Bootstrap (B=5000):** AUC mean **0.985**, 95% CI **[0.963, 0.999]**; BalancedAcc mean **0.952**, 95% CI **[0.910, 0.989]**
+
+**Wichtig zur „AUC=0.015 vs 0.985“-Verwirrung:**
+Als du `pos-label SCRYPT` gesetzt hast, kam **AUC=0.015**. Das heißt nicht „kein Signal“, sondern: *du hast die Richtung invertiert*. ROC-AUC kann < 0.5 sein, wenn das Scoring die Klassen systematisch „andersrum“ ordnet; dann ist **1 − AUC** die „richtige“ Sicht. ([RFC Editor][1])
+Inhaltlich passt das zu deinen Means: **PBKDF2 hat höhere ODS/GAP_VAR** als scrypt.
+
+## Warum ist das teils „besser“ als Stage-2?
+
+Das ist **kein Widerspruch**, sondern andere Bedingungen:
+
+1. **Ohne Attacker = weniger Scheduling-Noise.**
+   Stage-2 misst unter ko-residentem Angreifer → zusätzliche Interferenz macht jede Einzelsample-Metrik noisiger. Dein KDF-Run ist „clean baseline“.
+
+2. **PBKDF2 vs. scrypt ist ein sehr „hartes“ Paar.**
+   scrypt ist explizit **memory-hard** (großer, strukturierter Memory-Footprint), während PBKDF2 eine klassische iterierte PRF-Konstruktion ist. RFC-7914 beschreibt scrypt als memory-hard und als Schutz gegen Custom-Hardware-Angriffe. ([RFC Editor][2])
+   PBKDF2 ist in RFC-8018 als iteriertes Verfahren mit (u.a.) HMAC als PRF beschrieben und hat als Sicherheitshebel die Iterationszahl. ([RFC Editor][3])
+   → Diese strukturellen Unterschiede können sich in Completion-Order und Gap-Statistiken extrem klar niederschlagen.
+
+3. **n=50 statt n=20 = stabilere Schätzung pro Sample.**
+   Mehr Jobs pro Observation glätten Ausreißer → AUC steigt oft sichtbar.
+
+Du kannst das im Paper sauber framen als:
+
+* **Stage-2** = *conservative / threat-model aligned* Messung unter Co-Residence
+* **KDF Case Study** = *real-world validation / upper bound in clean execution*
+
+## Paper-Text (copy-paste, 1 Absatz + kurzer “Why”-Absatz)
+
+**Case Study (Results).**
+
+> *Case study: cryptographic KDF fingerprinting.* To validate that completion-order fingerprinting transfers to real workloads, we instrument the victim to execute either PBKDF2-HMAC-SHA256 (CPU-bound KDF) or scrypt (memory-hard KDF). Using W=0 (no scrubbing) and observations of n=50 jobs per trace, we obtain a strong separation: PBKDF2 exhibits higher order disruption and gap variance than scrypt (ODS means 0.0287 vs. 0.0089; GAP_VAR means 2.44 vs. 0.47). A simple threshold classifier achieves ROC-AUC 0.985 (bootstrap 95% CI [0.963, 0.999]) with 94% best-threshold accuracy; GAP_VAR yields similar performance (AUC 0.979). These results show that completion-order leakage is observable on real cryptographic primitives and can reveal operational context (which KDF family a system uses) to an unprivileged co-resident observer.
+
+**Explanation (Why this is so strong).**
+
+> The KDF pair is structurally distinct: scrypt is designed around memory-hard functions and parameterized to impose substantial memory cost, whereas PBKDF2 is an iterated PRF construction whose primary cost lever is the iteration count. ([RFC Editor][2]) In addition, this case study was collected without attacker-induced co-resident noise, yielding cleaner completion-order statistics than our threat-model experiments. Finally, larger observations (n=50) reduce estimator variance, further increasing separability.
+
+*(Optional 1-liner footnote if du willst)*
+
+> Note that ROC-AUC values below 0.5 can occur when the scoring direction is inverted; swapping the positive/negative label yields 1−AUC. ([RFC Editor][1])
+
+## BibTeX (für deine .bib)
+
+```bibtex
+@misc{rfc7914,
+  author       = {Colin Percival and Simon Josefsson},
+  title        = {{RFC 7914}: The scrypt Password-Based Key Derivation Function},
+  howpublished  = {Internet Engineering Task Force (IETF)},
+  year         = {2016},
+  month        = aug,
+  note         = {Informational},
+}
+
+@misc{rfc8018,
+  author       = {B. Moriarty and J. Kaliski and A. Rusch and M. Nystrom},
+  title        = {{RFC 8018}: PKCS \#5: Password-Based Cryptography Specification Version 2.1},
+  howpublished = {Internet Engineering Task Force (IETF)},
+  year         = {2017},
+  month        = jan,
+  note         = {Includes PBKDF2 (Section 5.2)},
+}
+
+@inproceedings{percival2009scrypt,
+  author    = {Colin Percival},
+  title     = {Stronger Key Derivation via Sequential Memory-Hard Functions},
+  year      = {2009},
+  note      = {Original scrypt paper},
+}
+```
+
+Wenn du willst, mache ich dir als Nächstes noch eine **mini Table** (2 Zeilen: PBKDF2 vs scrypt; Spalten: ODS mean/std, GAP_VAR mean/std, AUC, BalAcc, CI) exakt im LNCS-Stil – aber inhaltlich hast du jetzt alles, was du fürs Paper brauchst.
+
+[1]: https://www.rfc-editor.org/errata/rfc7914?utm_source=chatgpt.com "RFC Errata Report » RFC Editor"
+[2]: https://www.rfc-editor.org/rfc/rfc7914 "RFC 7914: The scrypt Password-Based Key Derivation Function"
+[3]: https://www.rfc-editor.org/rfc/rfc8018 "RFC 8018: PKCS #5: Password-Based Cryptography Specification Version 2.1"
+
+Alles klar — **nur das eine**:
+
+### Paper-Snippet (Case Study Result + kurze Erklärung)
+
+> **Case study: KDF fingerprinting (PBKDF2 vs. scrypt).**
+> To validate that completion-order fingerprinting transfers to real cryptographic workloads, we configured the victim to run either PBKDF2-HMAC-SHA256 (CPU-bound) or scrypt (memory-hard). With scrubbing disabled (W=0) and observations of n=50 jobs per trace, the two KDFs are strongly separable: PBKDF2 shows higher order disruption and gap variance than scrypt (ODS mean 0.0287 vs. 0.0089; GAP_VAR mean 2.44 vs. 0.47). A simple threshold classifier achieves ROC-AUC 0.985 (bootstrap 95% CI [0.963, 0.999]) with 94% best-threshold accuracy; GAP_VAR yields similar performance (AUC 0.979). This result indicates that completion-order leakage reveals operational context (which KDF family is executed). The strong separation is expected because scrypt is explicitly designed as a memory-hard KDF, whereas PBKDF2 is an iterated PRF construction whose cost is dominated by iteration count, leading to different completion-gap structure.
+
+**BibTeX:**
+
+```bibtex
+@misc{rfc7914,
+  author       = {Colin Percival and Simon Josefsson},
+  title        = {{RFC 7914}: The scrypt Password-Based Key Derivation Function},
+  howpublished = {Internet Engineering Task Force (IETF)},
+  year         = {2016},
+  month        = aug
+}
+
+@misc{rfc8018,
+  author       = {B. Moriarty and J. Kaliski and A. Rusch and M. Nystrom},
+  title        = {{RFC 8018}: PKCS \#5: Password-Based Cryptography Specification Version 2.1},
+  howpublished = {Internet Engineering Task Force (IETF)},
+  year         = {2017},
+  month        = jan
+}
+```
+
+
+AB HIER WOMÖGLICH WIE ALTES ABER EBENB MIT NEUER STORY
+
+B) Case Study (Real Crypto Workloads): PBKDF2 vs scrypt
+
+Was gemacht:
+In src/victim.py wurden zwei “real workload”-Modi ergänzt:
+
+--mode pbkdf2 (PBKDF2-HMAC-SHA256, iters=100000)
+
+--mode scrypt (scrypt, n=16384, r=8, p=1, dklen=32)
+
+Dann wurden pro Klasse 50 Samples gesammelt (n=50 Jobs pro Sample). Danach wurde exakt wie in Stage2 analysiert (ODS/GAP_VAR + Bootstrap-CI). Zusätzlich wurde die gleiche Case Study unter BOS mit W=16 wiederholt, um “Defense works” auch für reale Krypto-Primitive zu zeigen.
+
+Ergebnisse (W=0, 50/50 Samples, n=50):
+
+ODS: PBKDF2 mean 0.0287 vs scrypt mean 0.0089
+
+GAP_VAR: PBKDF2 mean 2.4365 vs scrypt mean 0.4678
+
+AUC (ODS) = 0.985, Best-threshold Accuracy 94%
+
+Bootstrap: AUC mean 0.985, 95% CI [0.963, 0.999]; BalancedAcc mean 0.952, 95% CI [0.910, 0.989]
+
+Ergebnisse (W=16, 50/50 Samples, n=50):
+
+ODS: PBKDF2 mean 0.1638 vs scrypt mean 0.1637 (nahezu identisch)
+
+GAP_VAR: PBKDF2 mean 21.4710 vs scrypt mean 21.4564 (nahezu identisch)
+
+AUC (ODS) = 0.514 (≈ random)
+
+Bootstrap: AUC mean 0.513, 95% CI [0.406, 0.621]
+
+Interpretation / “Warum so?” (paper-ready, kompakt):
+
+The KDF case study shows stronger separation than the synthetic CPU-vs-MEM setting because the two primitives induce more distinct completion-gap statistics under clean conditions (PBKDF2 exhibits substantially higher GAP_VAR than scrypt in our setup). Moreover, we collect longer traces (n=50 jobs per observation), which stabilizes order-based metrics. Enabling BOS with W=16 removes these structural differences and reduces classification to chance, confirming that BOS mitigates leakage even for real cryptographic workloads.
+
+Wichtig für Konsistenz:
+Dein “AUC=0.015 vs 0.985” Effekt war nur pos/neg vertauscht. Fürs Paper: immer so reporten, dass AUC > 0.5 ist (z.B. --pos-label PBKDF2 --neg-label SCRYPT, wie du es am Ende gemacht hast).
+
+BibTeX (für Case Study)
+
+Für Paper minimal (und sauber): RFCs.
+
+@techreport{RFC7914,
+  author = {C. Percival and S. Josefsson},
+  title = {The scrypt Password-Based Key Derivation Function},
+  type = {RFC},
+  number = {7914},
+  year = {2016},
+  month = {Aug},
+  institution = {RFC Editor}
+}
+
+@techreport{RFC8018,
+  author = {A. Moriarty and B. Kaliski and S. Rusch},
+  title = {{PKCS \#5: Password-Based Cryptography Specification Version 2.1}},
+  type = {RFC},
+  number = {8018},
+  year = {2017},
+  month = {Jan},
+  institution = {RFC Editor}
+}

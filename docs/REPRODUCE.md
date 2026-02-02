@@ -286,3 +286,109 @@ See `RESULT.md` for Intel Stage 1 and Stage 2 reproduction commands and results.
 - `out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv`
 
 **Pinning:** `taskset -c 0,1` (victim + dataset), `taskset -c 2-19` (off-core attacker)
+
+---
+
+# 8) Case Study: KDF Fingerprinting (PBKDF2 vs. scrypt)
+
+Victim modes `pbkdf2` and `scrypt` use Python's `hashlib`.
+
+## Output files
+```
+out/csv/study/
+├── kdf_stage2_W0_test.csv
+└── kdf_stage2_W16_test.csv
+```
+
+## W=0 (baseline)
+
+### Terminal 1 — PBKDF2 victim
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock victim_pbkdf2.sock
+taskset -c 0,1 python3 -u ./src/victim.py \
+  --sock victim_pbkdf2.sock --mode pbkdf2 --iters 100000 --workers 2 --scrub-window 0
+```
+
+### Terminal 2 — Collect PBKDF2
+```bash
+cd ~/projects/ordleak
+ln -sf ../victim_pbkdf2.sock out/victim.sock
+taskset -c 0,1 python3 ./scripts/run_dataset.py \
+  --runs 50 --n 50 --label PBKDF2 \
+  --out out/csv/study/kdf_stage2_W0_test.csv \
+  --scrub-window 0 --scrub-seed 42
+```
+
+Stop victim (Ctrl+C).
+
+### Terminal 1 — scrypt victim
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock victim_scrypt.sock
+taskset -c 0,1 python3 -u ./src/victim.py \
+  --sock victim_scrypt.sock --mode scrypt --workers 2 --scrub-window 0
+```
+
+### Terminal 2 — Collect scrypt (append)
+```bash
+cd ~/projects/ordleak
+ln -sf ../victim_scrypt.sock out/victim.sock
+taskset -c 0,1 python3 ./scripts/run_dataset.py \
+  --runs 50 --n 50 --label SCRYPT \
+  --out out/csv/study/kdf_stage2_W0_test.csv \
+  --scrub-window 0 --scrub-seed 42
+```
+
+## W=16 (with BOS defense)
+
+### Terminal 1 — PBKDF2 victim (W=16)
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock victim_pbkdf2.sock
+taskset -c 0,1 python3 -u ./src/victim.py \
+  --sock victim_pbkdf2.sock --mode pbkdf2 --iters 100000 --workers 2 --scrub-window 16
+```
+
+### Terminal 2 — Collect PBKDF2
+```bash
+cd ~/projects/ordleak
+ln -sf ../victim_pbkdf2.sock out/victim.sock
+taskset -c 0,1 python3 ./scripts/run_dataset.py \
+  --runs 50 --n 50 --label PBKDF2 \
+  --out out/csv/study/kdf_stage2_W16_test.csv \
+  --scrub-window 16 --scrub-seed 42
+```
+
+Stop victim (Ctrl+C).
+
+### Terminal 1 — scrypt victim (W=16)
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock victim_scrypt.sock
+taskset -c 0,1 python3 -u ./src/victim.py \
+  --sock victim_scrypt.sock --mode scrypt --workers 2 --scrub-window 16
+```
+
+### Terminal 2 — Collect scrypt (append)
+```bash
+cd ~/projects/ordleak
+ln -sf ../victim_scrypt.sock out/victim.sock
+taskset -c 0,1 python3 ./scripts/run_dataset.py \
+  --runs 50 --n 50 --label SCRYPT \
+  --out out/csv/study/kdf_stage2_W16_test.csv \
+  --scrub-window 16 --scrub-seed 42
+```
+
+## Analyze
+```bash
+# W=0
+python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W0_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W0_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+
+# W=16
+python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W16_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W16_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+```
+
+**Note:** AUC is direction-sensitive. With `--pos-label PBKDF2`: W=0 gives AUC=0.985, W=16 gives AUC=0.514.
