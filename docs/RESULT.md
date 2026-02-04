@@ -516,7 +516,7 @@ out/csv/stage3/
 | W | Samples | ODS AUC | ODS 95% CI | GAP_VAR AUC | Interpretation |
 |---:|---:|---:|---|---:|---|
 | 0 (baseline) | 200 (100/100) | **0.821** | [0.759, 0.878] | 0.835 | Strong leakage (baseline) |
-| 4 | 200 (100/100) | **0.750** | — | 0.724 | Leakage reduced, but still present |
+| 4 | 200 (100/100) | **0.750** | [0.682, 0.814] | 0.724 | Leakage reduced, but still present |
 | 8 | 200 (100/100) | **0.773** | [0.700, 0.845] | 0.789 | Non-monotonic: higher than W=4 |
 | 12 | 200 (100/100) | **0.677** | [0.601, 0.749] | 0.514 | ODS "weak", GAP_VAR ≈ random |
 | 14 | 200 (100/100) | **0.501** | [0.420, 0.580] | 0.597 | ODS ≈ random, GAP_VAR slight signal |
@@ -615,8 +615,6 @@ Validate that completion-order fingerprinting generalizes from synthetic CPU/MEM
 
 - Victim modes: `--mode pbkdf2` and `--mode scrypt`
 - Samples: 100 runs per class, n=50 jobs per run 
-- Security check with 50 runs per class
-- No attacker (clean channel)
 - Pinning: `taskset -c 0,1`
 
 ## Files
@@ -632,58 +630,22 @@ out/csv/study/
 
 | Metric   | SCRYPT            | PBKDF2            | Cohen's d | AUC   |
 |----------|-------------------|-------------------|----------:|------:|
-| ODS      | 0.0119 ± 0.0059   | 0.0011 ± 0.0008   | 2.569     | **0.940** |
-| GAP_VAR  | 1.2716 ± 0.8083   | 0.0444 ± 0.0430   | 2.144     | 0.938 |
+| ODS      | 0.0053 ± 0.0047   | 0.0141 ± 0.0070   | 1.468     | **0.835** |
+| GAP_VAR  | 0.6866 ± 0.8772   | 1.5058 ± 1.2325   | 0.766     | 0.749 |
 
-Bootstrap (B=5000): AUC mean=0.940, 95% CI [0.895, 0.978]  
-Best threshold accuracy: 94.5% (thr=0.0033)
+Bootstrap (B=5000): AUC mean=0.836, 95% CI [0.778, 0.888]  
+Best threshold accuracy: 76.5% (thr=0.0131)
+
 
 ### W=16 (BOS defense)
 
 | Metric   | SCRYPT            | PBKDF2            | Cohen's d | AUC   |
 |----------|-------------------|-------------------|----------:|------:|
-| ODS      | 0.1628 ± 0.0037   | 0.1634 ± 0.0011   | -0.222    | **0.421** |
-| GAP_VAR  | 21.4758 ± 1.3729  | 21.3701 ± 0.4191  | 0.104     | 0.491 |
+| ODS      | 0.1644 ± 0.0026   | 0.1642 ± 0.0030   | -0.058    | **0.484** |
+| GAP_VAR  | 21.7689 ± 1.1806  | 21.7074 ± 1.4519  | -0.046    | 0.494 |
 
-Bootstrap (B=5000): AUC mean=0.422, 95% CI [0.337, 0.508]  
-Best threshold accuracy: 60.0% (thr=0.1657)
-
-
-
-## Results 50 runs 
-
-### W=0 (no defense)
-
-| Metric | SCRYPT | PBKDF2 | Cohen's d | AUC |
-|--------|--------|--------|-----------|-----|
-| ODS | 0.0089 ± 0.0048 | 0.0287 ± 0.0080 | 2.995 | **0.985** |
-| GAP_VAR | 0.4678 ± 0.3104 | 2.4365 ± 1.2976 | 2.087 | 0.979 |
-
-Bootstrap (B=5000): AUC mean=0.985, 95% CI [0.963, 0.999]
-
-Best threshold accuracy: 94.0%
-
-### W=16 (BOS defense)
-
-| Metric | AUC | Bootstrap 95% CI |
-|--------|-----|------------------|
-| ODS | **0.514** | [0.406, 0.621] |
-
-Bootstrap (B=5000): AUC mean=0.513
-
-**Signal eliminated** — CI includes 0.5.
-
-## Summary Table
-
-| W | ODS AUC | 95% CI | Interpretation |
-|---:|---:|---|---|
-| 0 | **0.985** | [0.963, 0.999] | Strong leakage |
-| 16 | **0.514** | [0.406, 0.621] | No signal (BOS works) |
+Bootstrap (B=5000): AUC mean=0.484, 95% CI [0.404, 0.563]  
+Best threshold accuracy: 53.0% (thr=0.1673)
 
 
 
-## Interpretation
-
-PBKDF2 induces higher completion-order disruption than scrypt despite being faster (~17ms vs ~33ms per call). This is explained by **service-time variance**: PBKDF2 (CPU-bound) shows higher variability, causing more job reordering; scrypt (memory-hard) runs more consistently.
-
-With BOS (W=16), AUC drops from 0.985 to 0.514 — confirming that the defense generalizes to real cryptographic workloads.
