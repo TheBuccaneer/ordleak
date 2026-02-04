@@ -1,8 +1,0 @@
-Architecture:                x86_64
-  CPU op-mode(s):            32-bit, 64-bit
-  Address sizes:             43 bits physical, 48 bits virtual
-  Byte Order:                Little Endian
-CPU(s):                      64
-  On-line CPU(s) list:       0-63
-Vendor ID:                   AuthenticAMD
-  Model name:                AMD Ryzen Threadripper 3970X 32-Core Processor

@@ -300,6 +300,7 @@ out/csv/study/
 └── kdf_stage2_W16_test.csv
 ```
 
+
 ## W=0 (baseline)
 
 ### Terminal 1 — PBKDF2 victim
@@ -315,12 +316,14 @@ taskset -c 0,1 python3 -u ./src/victim.py \
 cd ~/projects/ordleak
 ln -sf ../victim_pbkdf2.sock out/victim.sock
 taskset -c 0,1 python3 ./scripts/run_dataset.py \
-  --runs 50 --n 50 --label PBKDF2 \
+  --runs 100 --n 50 --label PBKDF2 \
   --out out/csv/study/kdf_stage2_W0_test.csv \
   --scrub-window 0 --scrub-seed 42
 ```
 
 Stop victim (Ctrl+C).
+
+## W=0 (Attacker)
 
 ### Terminal 1 — scrypt victim
 ```bash
@@ -335,12 +338,15 @@ taskset -c 0,1 python3 -u ./src/victim.py \
 cd ~/projects/ordleak
 ln -sf ../victim_scrypt.sock out/victim.sock
 taskset -c 0,1 python3 ./scripts/run_dataset.py \
-  --runs 50 --n 50 --label SCRYPT \
+  --runs 100 --n 50 --label SCRYPT \
+  --attack --attack-procs 16 --attack-seconds 5 \
   --out out/csv/study/kdf_stage2_W0_test.csv \
   --scrub-window 0 --scrub-seed 42
 ```
 
-## W=16 (with BOS defense)
+
+
+## W=16 (with BOS defense - baseline)
 
 ### Terminal 1 — PBKDF2 victim (W=16)
 ```bash
@@ -355,7 +361,7 @@ taskset -c 0,1 python3 -u ./src/victim.py \
 cd ~/projects/ordleak
 ln -sf ../victim_pbkdf2.sock out/victim.sock
 taskset -c 0,1 python3 ./scripts/run_dataset.py \
-  --runs 50 --n 50 --label PBKDF2 \
+  --runs 100 --n 50 --label PBKDF2 \
   --out out/csv/study/kdf_stage2_W16_test.csv \
   --scrub-window 16 --scrub-seed 42
 ```
@@ -375,20 +381,23 @@ taskset -c 0,1 python3 -u ./src/victim.py \
 cd ~/projects/ordleak
 ln -sf ../victim_scrypt.sock out/victim.sock
 taskset -c 0,1 python3 ./scripts/run_dataset.py \
-  --runs 50 --n 50 --label SCRYPT \
+  --runs 100 --n 50 --label SCRYPT \
+  --attack --attack-procs 16 --attack-seconds 5 \
   --out out/csv/study/kdf_stage2_W16_test.csv \
   --scrub-window 16 --scrub-seed 42
 ```
 
+
+
 ## Analyze
 ```bash
 # W=0
-python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W0_test.csv --pos-label PBKDF2 --neg-label SCRYPT
-python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W0_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W0_test.csv --pos-label SCRYPT --neg-label PBKDF2
+python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W0_test.csv --pos-label SCRYPT --neg-label PBKDF2
 
 # W=16
-python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W16_test.csv --pos-label PBKDF2 --neg-label SCRYPT
-python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W16_test.csv --pos-label PBKDF2 --neg-label SCRYPT
+python3 ./scripts/analyze.py out/csv/study/kdf_stage2_W16_test.csv --pos-label SCRYPT --neg-label PBKDF2
+python3 ./scripts/bootstrap_ci.py out/csv/study/kdf_stage2_W16_test.csv --pos-label SCRYPT --neg-label PBKDF2
 ```
 
-**Note:** AUC is direction-sensitive. With `--pos-label PBKDF2`: W=0 gives AUC=0.985, W=16 gives AUC=0.514.
+**Note:** AUC is direction-sensitive. 

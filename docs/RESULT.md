@@ -614,7 +614,8 @@ Validate that completion-order fingerprinting generalizes from synthetic CPU/MEM
 ## Setup
 
 - Victim modes: `--mode pbkdf2` and `--mode scrypt`
-- Samples: 50 runs per class, n=50 jobs per run
+- Samples: 100 runs per class, n=50 jobs per run 
+- Security check with 50 runs per class
 - No attacker (clean channel)
 - Pinning: `taskset -c 0,1`
 
@@ -625,7 +626,31 @@ out/csv/study/
 └── kdf_stage2_W16_test.csv
 ```
 
-## Results
+## Results 100 runs
+
+### W=0 (no defense)
+
+| Metric   | SCRYPT            | PBKDF2            | Cohen's d | AUC   |
+|----------|-------------------|-------------------|----------:|------:|
+| ODS      | 0.0119 ± 0.0059   | 0.0011 ± 0.0008   | 2.569     | **0.940** |
+| GAP_VAR  | 1.2716 ± 0.8083   | 0.0444 ± 0.0430   | 2.144     | 0.938 |
+
+Bootstrap (B=5000): AUC mean=0.940, 95% CI [0.895, 0.978]  
+Best threshold accuracy: 94.5% (thr=0.0033)
+
+### W=16 (BOS defense)
+
+| Metric   | SCRYPT            | PBKDF2            | Cohen's d | AUC   |
+|----------|-------------------|-------------------|----------:|------:|
+| ODS      | 0.1628 ± 0.0037   | 0.1634 ± 0.0011   | -0.222    | **0.421** |
+| GAP_VAR  | 21.4758 ± 1.3729  | 21.3701 ± 0.4191  | 0.104     | 0.491 |
+
+Bootstrap (B=5000): AUC mean=0.422, 95% CI [0.337, 0.508]  
+Best threshold accuracy: 60.0% (thr=0.1657)
+
+
+
+## Results 50 runs 
 
 ### W=0 (no defense)
 
@@ -654,6 +679,8 @@ Bootstrap (B=5000): AUC mean=0.513
 |---:|---:|---|---|
 | 0 | **0.985** | [0.963, 0.999] | Strong leakage |
 | 16 | **0.514** | [0.406, 0.621] | No signal (BOS works) |
+
+
 
 ## Interpretation
 
