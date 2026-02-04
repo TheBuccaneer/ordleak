@@ -1,13 +1,11 @@
 # REPRODUCE.md — ordleak
 
-This file documents **how to reproduce** the datasets currently stored under:
+This file documents **how to reproduce** the datasets currently stored under for AMD and Intel:
 
-- `out/csv/stage1/threadripper/first run_ripper/`
+- `out/csv/stage1/
 - `out/csv/stage2/`
 - `out/csv/stage3/`
 
-It is written so that a future **artifact bundle** can treat the artifact folder as the **root directory**.
-(So paths below are relative to the repository root / artifact root.)
 
 ---
 
@@ -22,11 +20,22 @@ It is written so that a future **artifact bundle** can treat the artifact folder
 - `out/csv/stage1/threadripper/first run_ripper/run5_dataset.csv`
 - `out/csv/stage1/threadripper/first run_ripper/run6_negctrl_vs_base.csv`
 
+- `out/csv/stage1/intel_i9_7900x/runset1/run1_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run2_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run3_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run4_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run5_dataset.csv`
+- `out/csv/stage1/intel_i9_7900x/runset1/run6_negctrl_vs_base.csv`
+
 ### Stage 2 — secret leakage (CPU vs MEM)
 
 - `out/csv/stage2/threadripper/secret_tr_base.csv`
 - `out/csv/stage2/threadripper/secret_tr_att.csv`
 - `out/csv/stage2/threadripper/negctrl_stage2.csv`
+
+- `out/csv/stage2/i9_7900x/secret_tr_base.csv`
+- `out/csv/stage2/i9_7900x/secret_tr_att.csv`
+- `out/csv/stage2/i9_7900x/negctrl_stage2.csv`
 
 ### Stage 3 — defense evaluation (BOS scrubber)
 
@@ -36,6 +45,13 @@ It is written so that a future **artifact bundle** can treat the artifact folder
 - `out/csv/stage3/stage2_att_W12_r100.csv`
 - `out/csv/stage3/stage2_att_W14_r100.csv`
 - `out/csv/stage3/stage2_att_W16_r100.csv`
+
+### study
+
+- `out/csv/study/kdf_stage2_W0_test.csv`
+- `out/csv/study/kdf_stage2_W16_test.csv`
+
+
 
 ---
 
@@ -55,7 +71,8 @@ The victim server listens on a Unix socket. We maintain a stable socket path by 
 
 ## 3) Stage 1 reproduction (presence leakage)
 
-### Terminal 1 — start victim (CPU mode)
+### Terminal 1 — start victim (CPU mode) 
+First step with intel and AMD
 ```bash
 cd ~/projects/ordleak
 rm -f out/victim.sock
@@ -63,14 +80,15 @@ taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --
 ```
 
 ### Terminal 2 — point stable socket symlink
+Second step with Intel and AMD
 ```bash
 cd ~/projects/ordleak
 ln -sf victim_cpu.sock out/victim.sock
 ```
 
-### Terminal 2 — create one Stage 1 dataset (BASELINE then ATTACK into same CSV)
-
-**Example: `run1_dataset.csv`**
+### Terminal 2 — create one Stage 1 dataset (BASELINE then ATTACK into same CSV) (Threadripper)
+After second step either AMD...
+**`run1_dataset.csv`**
 ```bash
 cd ~/projects/ordleak
 mkdir -p "out/csv/stage1/threadripper/first run_ripper"
@@ -79,12 +97,18 @@ taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label BASE
 
 taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label ATTACK   --out "out/csv/stage1/threadripper/first run_ripper/run1_dataset.csv"
 ```
+and similar for datasets
+**`run2_dataset.csv`**
+**`run3_dataset.csv`**
+**`run4_dataset.csv`**
+**`run5_dataset.csv`**
 
-Repeat the same pattern for:
-- `run2_dataset.csv`
-- `run3_dataset.csv`
-- `run4_dataset.csv`
-- `run5_dataset.csv`
+
+### Terminal 2 — create one Stage 1 dataset (BASELINE then ATTACK into same CSV) (Intel)
+Or after second step with Intel
+
+analog to AMD
+
 
 ---
 
@@ -93,6 +117,7 @@ Repeat the same pattern for:
 Goal: show that an attacker running **off-core** (not sharing victim cores) does *not* create a strong signal.
 
 ### Terminal 3 — start off-core attacker (separate)
+Attacker is pinned to cores 2-31 or 2-20 with Intel. Here shown for AMD
 ```bash
 cd ~/projects/ordleak
 taskset -c 2-31 python3 -u src/attacker.py --procs 32 --seconds 999999
@@ -109,6 +134,30 @@ taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label NEGC
 taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label BASELINE   --out "out/csv/stage1/threadripper/first run_ripper/run6_negctrl_vs_base.csv"
 ```
 
+analog with Intels
+
+### Analysis
+
+Stage 1:
+```bash
+cd ~/projects/ordleak
+python3 scripts/analyze.py "out/csv/stage1/threadripper/first run_ripper/run1_dataset.csv"
+python3 scripts/bootstrap_ci.py "out/csv/stage1/threadripper/first run_ripper/run1_dataset.csv"
+```
+
+```bash
+python3 scripts/analyze.py \
+  "out/csv/stage1/threadripper/first run_ripper/run6_negctrl_vs_base.csv" \
+  --pos-label NEGCTRL_OFFCORE --neg-label BASELINE
+```
+
+```bash
+python3 scripts/bootstrap_ci.py \
+  "out/csv/stage1/threadripper/first run_ripper/run6_negctrl_vs_base.csv" \
+  --pos-label NEGCTRL_OFFCORE --neg-label BASELINE
+```
+
+
 ---
 
 ## 5) Stage 2 reproduction (secret leakage: CPU vs MEM)
@@ -119,36 +168,107 @@ Stage 2 uses two victim modes:
 
 ### 5.1 Baseline secret leakage: `CPU_BASE` vs `MEM_BASE` → `secret_tr_base.csv`
 
-See `RESULT.md` for detailed commands. Summary:
-1. Start CPU victim, collect `CPU_BASE` (100 runs)
-2. Restart as MEM victim, collect `MEM_BASE` (100 runs)
+**Terminal 1 — victim CPU**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
+```
+
+**Terminal 2 — collect CPU_BASE**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_cpu.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
+```
+
+**Terminal 1 — victim MEM**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
+```
+
+**Terminal 2 — collect MEM_BASE (append)**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_mem.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
+```
+### Analyze: `secret_tr_base.csv` (MEM_BASE vs CPU_BASE)
+
+```bash
+cd ~/projects/ordleak
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+```
+
+for intel
+python3 scripts/analyze.py out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
+python3 scripts/bootstrap_ci.py out/csv/stage2/i9_7900x/secret_intel_stage2_base.csv  --pos-label MEM_BASE --neg-label CPU_BASE
+
+python3 scripts/analyze.py out/csv/stage2/i9_7900x/negctrl_intel_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE  --neg-label CPU_NEGCTRL_OFFCORE
+
+
+
+
 
 ### 5.2 Attack-amplified secret leakage: `CPU_ATT` vs `MEM_ATT` → `secret_tr_att.csv`
 
-1. Start CPU victim, collect `CPU_ATT` with `--attack --attack-procs 32 --attack-seconds 5`
-2. Restart as MEM victim, collect `MEM_ATT`
+**Terminal 1 — victim CPU**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
+```
+
+**Terminal 2 — collect CPU_ATT**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_cpu.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
+```
+
+**Terminal 1 — victim MEM**
+```bash
+cd ~/projects/ordleak
+rm -f out/victim.sock
+taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
+```
+
+**Terminal 2 — collect MEM_ATT (append)**
+```bash
+cd ~/projects/ordleak
+ln -sf victim_mem.sock out/victim.sock
+taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
+```
+
+## Analyze 
+
+### Results: `secret_tr_att.csv` (MEM_ATT vs CPU_ATT)
+
+```bash
+cd ~/projects/ordleak
+python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+```
 
 ### 5.3 Negative control: `negctrl_stage2.csv`
 
 Off-core attacker pinned to `2-31`, victim on `0,1`.
 Labels: `CPU_NEGCTRL_OFFCORE`, `MEM_NEGCTRL_OFFCORE`
 
----
-
-## 6) Analysis + Bootstrap CI
-
-Stage 1:
-```bash
-cd ~/projects/ordleak
-python3 scripts/analyze.py "out/csv/stage1/threadripper/first run_ripper/run1_dataset.csv"
-python3 scripts/bootstrap_ci.py "out/csv/stage1/threadripper/first run_ripper/run1_dataset.csv"
-```
-
 Stage 2:
 ```bash
 cd ~/projects/ordleak
 python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
 python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
+
+python3 scripts/analyze.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label CPU_NEGCTRL_OFFCORE --neg-label MEM_NEGCTRL_OFFCORE
+python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label CPU_NEGCTRL_OFFCORE --neg-label MEM_NEGCTRL_OFFCORE
+
+
+
 ```
 
 ---

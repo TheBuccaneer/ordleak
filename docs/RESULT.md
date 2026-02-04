@@ -70,7 +70,6 @@ taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label BASE
 taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label ATTACK   --out <OUT.csv>
 ```
 
-> For `run5_dataset.csv` the run count was **200** per class (total 400).
 
 ---
 
@@ -85,19 +84,19 @@ The following files exist under your artifact-root layout:
 - `out/csv/stage1/threadripper/first run_ripper/run5_dataset.csv`
 - `out/csv/stage1/threadripper/first run_ripper/run6_negctrl_vs_base.csv`  (negative control; see Stage 1.6)
 
-### Stage 1 summary table
+### Stage 1 summary table (Threadripper)
 
 | Dataset file | Samples | ODS AUC (analyze) | GAP AUC (analyze) | Bootstrap AUC mean (ODS) | 95% CI | Bootstrap BalAcc mean | 95% CI |
 |---|---:|---:|---:|---:|---|---:|---|
 | run1_dataset.csv | 200 (100/100) | 0.979 | 0.983 | 0.979 | [0.958, 0.995] | 0.958 | [0.930, 0.984] |
 | run2_dataset.csv | 200 (100/100) | 0.975 | 0.974 | 0.975 | [0.950, 0.994] | 0.943 | [0.910, 0.973] |
 | run3_dataset.csv | 200 (100/100) | 0.923 | 0.918 | 0.924 | [0.890, 0.953] | 0.839 | [0.795, 0.883] |
-| run4_dataset.csv | 200 (100/100) | 0.748 | 0.774 | 0.748 | [0.679, 0.815] | 0.750 | [0.689, 0.808] |
-| run5_dataset.csv | 400 (200/200) | 0.949 | 0.940 | 0.949 | [0.927, 0.970] | 0.890 | [0.860, 0.917] |
+| run4_dataset.csv | 200 (100/100) | 0.887 | 0.826 | 0.887 | [0.837, 0.931] | 0.826 | [0.775, 0.875] |
+| run5_dataset.csv | 200 (100/100) | 0.990 | 0.953 | 0.990 | [0.980, 0.997] | 0.953 | [0.924, 0.980] |
 
 **Interpretation (Stage 1):**
 - On Threadripper, attacker presence is **very strongly** distinguishable (AUC often **0.92–0.98** depending on dataset).
-- `run4_dataset.csv` is the weakest among these but still **publishable** (AUC ≈ 0.75 with CI above chance).
+- `run4_dataset.csv` is the weakest among these but still **publishable** (AUC ≈ 0.75 with CI above chance). We think this is an outlier
 
 ---
 
@@ -189,47 +188,10 @@ Stage 2 produces:
 |---|---|---:|---:|---:|---:|---|---:|---|---|
 | `out/csv/stage2/threadripper/secret_tr_base.csv` | `MEM_BASE` vs `CPU_BASE` | 200 (100/100) | 0.476 | 0.466 | 0.476 | [0.400, 0.551] | 0.527 | [0.500, 0.576] | No attacker; near chance |
 | `out/csv/stage2/threadripper/secret_tr_att.csv` | `MEM_ATT` vs `CPU_ATT` | 200 (100/100) | 0.800 | 0.783 | 0.800 | [0.731, 0.863] | 0.791 | [0.734, 0.845] | Co-resident attacker; strong signal |
-| `out/csv/stage2/threadripper/negctrl_stage2.csv` | `MEM_NEGCTRL_OFFCORE` vs `CPU_NEGCTRL_OFFCORE` | 200 (100/100) | 0.447 | 0.468 | 0.447 | [0.370, 0.528] | 0.551 | [0.507, 0.596] | Off-core attacker; near chance (no amplification) |
+| `out/csv/stage2/threadripper/negctrl_stage2.csv` | `MEM_NEGCTRL_OFFCORE` vs `CPU_NEGCTRL_OFFCORE` | 200 (100/100) | 0.553 | 0.532 | 0.553 | [0.472, 0.630] | 0.625 | [0.575, 0.675] | Off-core attacker; near chance (no amplification) |
 
-## How Stage 2 datasets were generated (Threadripper)
-
-### 2.1 `secret_tr_base.csv` (no attacker)
-
-**Terminal 1 — victim CPU**
-```bash
-cd ~/projects/ordleak
-rm -f out/victim.sock
-taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
-```
-
-**Terminal 2 — collect CPU_BASE**
-```bash
-cd ~/projects/ordleak
-ln -sf victim_cpu.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label CPU_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
-```
-
-**Terminal 1 — victim MEM**
-```bash
-cd ~/projects/ordleak
-rm -f out/victim.sock
-taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
-```
-
-**Terminal 2 — collect MEM_BASE (append)**
-```bash
-cd ~/projects/ordleak
-ln -sf victim_mem.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --label MEM_BASE   --out out/csv/stage2/threadripper/secret_tr_base.csv
-```
 
 ### Results (latest): `secret_tr_base.csv` (MEM_BASE vs CPU_BASE)
-
-```bash
-cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
-python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_base.csv --pos-label MEM_BASE --neg-label CPU_BASE
-```
 
 - ODS AUC (analyze): **0.476**
 - GAP AUC (analyze): **0.466**
@@ -240,43 +202,7 @@ python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_base.csv -
 
 ---
 
-### 2.2 `secret_tr_att.csv` (co-resident attacker)
-
-**Terminal 1 — victim CPU**
-```bash
-cd ~/projects/ordleak
-rm -f out/victim.sock
-taskset -c 0,1 python3 -u src/victim.py --sock out/victim_cpu.sock --mode cpu --workers 2 --iters 200000
-```
-
-**Terminal 2 — collect CPU_ATT**
-```bash
-cd ~/projects/ordleak
-ln -sf victim_cpu.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label CPU_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
-```
-
-**Terminal 1 — victim MEM**
-```bash
-cd ~/projects/ordleak
-rm -f out/victim.sock
-taskset -c 0,1 python3 -u src/victim.py --sock out/victim_mem.sock --mode mem --mem-kb 8192 --workers 2 --iters 200000
-```
-
-**Terminal 2 — collect MEM_ATT (append)**
-```bash
-cd ~/projects/ordleak
-ln -sf victim_mem.sock out/victim.sock
-taskset -c 0,1 python3 scripts/run_dataset.py   --runs 100 --n 20   --attack --attack-procs 32 --attack-seconds 5   --label MEM_ATT   --out out/csv/stage2/threadripper/secret_tr_att.csv
-```
-
-### Results: `secret_tr_att.csv` (MEM_ATT vs CPU_ATT)
-
-```bash
-cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
-python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv --pos-label MEM_ATT --neg-label CPU_ATT
-```
+### 2.2 `secret_tr_att.csv` (co-resident attacker
 
 - ODS AUC (analyze): **0.800**
 - GAP AUC (analyze): **0.783**
@@ -297,13 +223,6 @@ python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/secret_tr_att.csv --
 - Attacker pinned off victim cores (Threadripper example): `2-31`
 - Victim + dataset runner pinned to: `0,1`
 
-### Analysis (latest)
-
-```bash
-cd ~/projects/ordleak
-python3 scripts/analyze.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
-python3 scripts/bootstrap_ci.py out/csv/stage2/threadripper/negctrl_stage2.csv --pos-label MEM_NEGCTRL_OFFCORE --neg-label CPU_NEGCTRL_OFFCORE
-```
 
 ### Results
 - ODS AUC (analyze): **0.447**

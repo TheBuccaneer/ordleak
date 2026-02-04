@@ -101,10 +101,10 @@ def main():
             attacker = None
             if args.attack:
                 attacker = subprocess.Popen(
-                    ["python3", "src/attacker.py", 
-                     "--procs", str(args.attack_procs), 
+                    ["python3", "src/attacker.py",
+                     "--procs", str(args.attack_procs),
                      "--seconds", str(args.attack_seconds)],
-                    stdout=subprocess.DEVNULL, 
+                    stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )
                 time.sleep(0.3)  # let attacker ramp up
