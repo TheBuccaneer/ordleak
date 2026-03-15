@@ -171,7 +171,7 @@ def main():
         raise SystemExit(f"ERROR: need both classes")
     
     if len(neg_ods) != len(pos_ods):
-        print(f"\n⚠️  WARNING: Unbalanced data! This will bias accuracy.")
+        print(f"\n  WARNING: Unbalanced data! This will bias accuracy.")
     
     print("\n" + "=" * 60)
     print("ODS (Order Disruption Score)")
@@ -230,11 +230,11 @@ def main():
     print("=" * 60)
     main_auc = auc_roc(mapped_labels, filtered_ods)
     if main_auc >= 0.70:
-        print("✅ Signal detected! AUC ≥ 0.70 is publishable.")
+        print("Signal detected! AUC ≥ 0.70 is publishable.")
     elif main_auc >= 0.60:
-        print("⚠️  Weak signal. Try: more attacker procs, shorter jobs, core pinning.")
+        print("Weak signal. Try: more attacker procs, shorter jobs, core pinning.")
     else:
-        print("❌ No signal. AUC ≈ 0.50 means random guessing.")
+        print("No signal. AUC ≈ 0.50 means random guessing.")
         print("   Try: --iters 100000, --workers 2, --attack-procs 24")
 
 

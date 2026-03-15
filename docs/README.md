@@ -143,9 +143,9 @@ Full command inventory: **`Command.md`**.
 
 ## Status
 
-- ✅ Stage 1 complete (presence leakage)
-- ✅ Stage 2 complete (secret leakage, attacker-amplified)
-- ✅ Stage 3 complete (BOS scrubber defense evaluation)
+- Stage 1 complete (presence leakage)
+- Stage 2 complete (secret leakage, attacker-amplified)
+- Stage 3 complete (BOS scrubber defense evaluation)
 
 ---
 
